@@ -1,0 +1,699 @@
+openapi: 3.0.3
+info:
+  title: Cloud Drive API
+  version: 0.1.0
+  description: >-
+    Browser API for sign-in, folder browsing, upload, file editing, and download.
+    State-changing browser requests require the configured application Origin.
+servers:
+  - url: /api/v1
+security:
+  - sessionCookie: []
+tags:
+  - name: Session
+  - name: Folders
+  - name: Files
+
+paths:
+  /auth/login:
+    post:
+      operationId: login
+      tags: [Session]
+      summary: Sign in with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: A session was created and the signed-in user is returned.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SessionCookie'
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          description: The credentials are invalid.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: INVALID_CREDENTIALS
+                  message: The email or password is incorrect.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [Session]
+      summary: Read the current session user
+      responses:
+        '200':
+          description: The signed-in user.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [Session]
+      summary: End the current session
+      description: An expired or missing session is already signed out.
+      security:
+        - sessionCookie: []
+        - {}
+      responses:
+        '200':
+          description: The session is ended and the browser cookie is cleared.
+          headers:
+            Set-Cookie:
+              description: Expires the session cookie using its original name and path.
+              schema:
+                type: string
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    $ref: '#/components/schemas/Success'
+                  data:
+                    type: object
+                    required: [signedOut]
+                    properties:
+                      signedOut:
+                        type: boolean
+                        enum: [true]
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /folders/{folderId}/contents:
+    get:
+      operationId: listFolderContents
+      tags: [Folders]
+      summary: List direct children of a folder
+      description: >-
+        Use root for the signed-in user's root. Pagination applies to the combined file
+        and folder list after filtering. Results sort by kind (folders first), then
+        by display name without case sensitivity, then by ID in ascending order.
+        A page past the last result returns an empty items array.
+      parameters:
+        - $ref: '#/components/parameters/FolderId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: q
+          in: query
+          description: >-
+            Case-insensitive display name substring for direct children in this folder.
+            Leading and trailing whitespace is ignored. An empty value applies no filter.
+          schema:
+            type: string
+            maxLength: 255
+      responses:
+        '200':
+          description: The requested page of visible files and folders.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderContentsResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /files:
+    post:
+      operationId: uploadFile
+      tags: [Files]
+      summary: Upload a file
+      description: The uploaded file is private by default.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                folderId:
+                  description: Omit this field or pass root to upload to the user's root.
+                  allOf:
+                    - $ref: '#/components/schemas/FolderReference'
+      responses:
+        '201':
+          description: The file is stored and available to the current user.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/QuotaExceeded'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/StorageUnavailable'
+  /files/{fileId}:
+    patch:
+      operationId: updateFile
+      tags: [Files]
+      summary: Edit file name, description, or tags
+      description: >-
+        At least one field is required. Omitted fields keep their current values.
+        Set description to null or tags to an empty array to clear them.
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFileRequest'
+      responses:
+        '200':
+          description: The updated file.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /files/{fileId}/download:
+    get:
+      operationId: downloadFile
+      tags: [Files]
+      summary: Download the file as an attachment
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: File bytes served as an attachment.
+          headers:
+            Content-Disposition:
+              description: >-
+                Attachment disposition with the percent-encoded UTF-8 display name in filename*.
+                filename is included when the same display name fits in the ASCII parameter.
+              schema:
+                type: string
+              example: "attachment; filename*=UTF-8''b%C3%A1o-c%C3%A1o.pdf"
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/StorageUnavailable'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: cloud_drive_session
+      description: Server-issued opaque session value for the same-origin browser.
+
+  parameters:
+    FolderId:
+      name: folderId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/FolderReference'
+    FileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  headers:
+    SessionCookie:
+      description: Sets the cloud_drive_session cookie with HttpOnly and SameSite=Lax. HTTPS deployments also use Secure.
+      schema:
+        type: string
+      example: 'cloud_drive_session=example; Path=/; HttpOnly; Secure; SameSite=Lax'
+    PrivateCache:
+      description: The response is private and must not be stored in caches.
+      schema:
+        type: string
+        enum: ['private, no-store']
+
+  responses:
+    InvalidRequest:
+      description: A path, query, or body field is invalid.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: INVALID_REQUEST
+              message: The request contains invalid values.
+    SessionRequired:
+      description: The session is missing, expired, or invalid.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: SESSION_REQUIRED
+              message: Sign in to continue.
+    Forbidden:
+      description: The request origin is disallowed or the visible resource cannot be changed by this user.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: FORBIDDEN
+              message: You do not have permission to make this change.
+    NotFound:
+      description: The file or folder is absent or outside the user's access scope.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: NOT_FOUND
+              message: The requested item was not found.
+    QuotaExceeded:
+      description: The upload would exceed the user's storage quota.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: STORAGE_QUOTA_EXCEEDED
+              message: This upload exceeds your storage quota.
+    FileTooLarge:
+      description: The upload exceeds the server's per-file size limit.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: FILE_TOO_LARGE
+              message: The file exceeds the upload size limit.
+    UnsupportedMediaType:
+      description: The upload request or file media type is unsupported.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: UNSUPPORTED_MEDIA_TYPE
+              message: This upload media type is not supported.
+    RateLimited:
+      description: Requests to this operation exceeded the current limit.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+        Retry-After:
+          description: Seconds until the operation can be retried.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: RATE_LIMITED
+              message: Too many requests. Try again later.
+    InternalError:
+      description: An unexpected server error prevented completion.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: INTERNAL_ERROR
+              message: An unexpected error occurred.
+    StorageUnavailable:
+      description: Object storage is temporarily unavailable.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: STORAGE_UNAVAILABLE
+              message: File storage is temporarily unavailable.
+
+  schemas:
+    Success:
+      type: boolean
+      enum: [true]
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Stable identifier for client handling.
+            message:
+              type: string
+              description: Human-readable description of the error.
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 1
+    User:
+      type: object
+      required: [id, email, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+    UserResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          $ref: '#/components/schemas/User'
+    FolderReference:
+      type: string
+      pattern: '^(root|[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$'
+      description: A folder UUID or the literal root.
+    FolderSummary:
+      type: object
+      required: [kind, id, name, parentId, createdAt, updatedAt]
+      properties:
+        kind:
+          type: string
+          enum: [folder]
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Null for a folder directly under the user's root.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    FileSummary:
+      type: object
+      required: [kind, id, originalName, folderId, mimeType, size, description, tags, createdAt, updatedAt]
+      properties:
+        kind:
+          type: string
+          enum: [file]
+        id:
+          type: string
+          format: uuid
+        originalName:
+          $ref: '#/components/schemas/FileName'
+        folderId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Null for a file directly under the user's root.
+        mimeType:
+          type: string
+        size:
+          type: integer
+          format: int64
+          minimum: 0
+          description: File size in bytes.
+        description:
+          $ref: '#/components/schemas/FileDescription'
+        tags:
+          $ref: '#/components/schemas/FileTags'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    FileName:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: The file's user-visible name, including its extension if present.
+    FileDescription:
+      type: string
+      nullable: true
+      maxLength: 2000
+    FileTags:
+      type: array
+      maxItems: 20
+      uniqueItems: true
+      items:
+        type: string
+        minLength: 1
+        maxLength: 64
+    FolderItem:
+      oneOf:
+        - $ref: '#/components/schemas/FolderSummary'
+        - $ref: '#/components/schemas/FileSummary'
+      discriminator:
+        propertyName: kind
+        mapping:
+          folder: '#/components/schemas/FolderSummary'
+          file: '#/components/schemas/FileSummary'
+    Breadcrumb:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    Pagination:
+      type: object
+      required: [page, limit, total, totalPages]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          description: The requested one-based page number.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: The effective page size applied to the query.
+        total:
+          type: integer
+          minimum: 0
+          description: Total visible direct children matching the filter.
+        totalPages:
+          type: integer
+          minimum: 0
+          description: Total number of pages, with zero pages for an empty result.
+    FolderContentsResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [folder, breadcrumbs, items]
+          properties:
+            folder:
+              description: Current folder details or null for root.
+              oneOf:
+                - $ref: '#/components/schemas/FolderSummary'
+                - type: object
+                  nullable: true
+                  enum: [null]
+            breadcrumbs:
+              type: array
+              description: >-
+                Visible ancestors in root-to-leaf order, followed by the current
+                folder. The user's root is implicit and returns an empty array.
+              items:
+                $ref: '#/components/schemas/Breadcrumb'
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/FolderItem'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    UpdateFileRequest:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        originalName:
+          $ref: '#/components/schemas/FileName'
+        description:
+          $ref: '#/components/schemas/FileDescription'
+        tags:
+          $ref: '#/components/schemas/FileTags'
+    FileResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          $ref: '#/components/schemas/FileSummary'

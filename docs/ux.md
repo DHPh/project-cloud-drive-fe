@@ -1,6 +1,6 @@
 # Thiết kế UX frontend
 
-**Trạng thái: dự thảo cho DRIVE-01.** Giữ bố cục, theme, icon, breadcrumb, chế độ lưới/danh sách và nội dung Việt/Anh của Drive hiện tại. Đối chiếu desktop và mobile trên bản đang chạy hoặc ảnh chụp từ dữ liệu tổng hợp.
+Phạm vi áp dụng là DRIVE-01. Màn hình mới tiếp nối bố cục, theme, icon, breadcrumb và chế độ lưới/danh sách của Drive Nuxt. Các chức năng ngoài mốc hiện tại sẽ xuất hiện khi có luồng tương ứng. Đối chiếu desktop và mobile trên bản chạy với dữ liệu tổng hợp.
 
 ## Drive
 

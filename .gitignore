@@ -1,0 +1,16 @@
+# Local configuration, notes, and deployment metadata
+.env
+.env.*
+!.env.example
+.local-docs/
+.vercel/
+
+# Dependencies, generated output, and test evidence
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/

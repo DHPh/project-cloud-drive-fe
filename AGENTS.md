@@ -1,6 +1,6 @@
 # Chỉ dẫn frontend
 
 - Đọc [thiết kế UX](docs/ux.md) trước khi đổi màn hình. Khi thêm tính năng hoặc màn hình, mô tả route, quyền, nguồn state, trạng thái lỗi/tải, viewport và hành vi khi quay lại trước khi viết component.
-- Nếu chỉ mục `.local-docs/README.md` có sẵn, đọc skill UX theo loại thay đổi. Dùng style và nội dung của Cloud Drive cho triển khai.
-- Lấy request, response và mã lỗi từ [hợp đồng API](../docs/contracts/README.md). Khi API thiếu hành vi cần thiết, cập nhật hợp đồng cùng backend trước khi tích hợp.
-- Kiểm chứng luồng bị tác động bằng bàn phím, desktop và mobile. Với ca lỗi, kiểm tra dữ liệu đang nhập và khả năng thử lại.
+- Nếu có bộ tài liệu local trong môi trường làm việc, đọc quy tắc frontend và dùng mẫu thiết kế UX cho màn hình mới. Giữ tài liệu local, đoạn trích và đường dẫn máy ngoài Git, báo cáo đính kèm và build context.
+- Backend sở hữu hợp đồng chuẩn. Dùng [bản OpenAPI tại repo này](docs/contracts/openapi.yaml) cho request, response và mã lỗi. Khi hợp đồng đổi, đồng bộ bản sao từ backend và chạy `npm run generate:api` cùng thay đổi phía frontend.
+- Kiểm chứng luồng bị tác động bằng fixture tổng hợp, bàn phím, desktop và mobile. Với ca lỗi, kiểm tra dữ liệu đang nhập và khả năng thử lại. Xem lệnh trong [README](README.md) và ghi kết quả thực tế khi bàn giao.

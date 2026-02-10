@@ -1,0 +1,91 @@
+import { ApiError } from './api';
+
+const vi = {
+  app: 'Cloud Drive', myDrive: 'Drive của tôi', home: 'Trang chủ', search: 'Tìm kiếm trong Drive', searchPlaceholder: 'Tìm kiếm',
+  newItem: 'Mới', upload: 'Tải tệp lên', folder: 'Thư mục', folders: 'Thư mục', files: 'Tệp',
+  openNavigation: 'Mở điều hướng', navigation: 'Điều hướng chính', close: 'Đóng', breadcrumb: 'Đường dẫn thư mục',
+  display: 'Chế độ hiển thị', grid: 'Dạng lưới', list: 'Dạng danh sách',
+  loading: 'Đang tải…', updating: 'Đang cập nhật…', noFolderItems: 'Thư mục trống',
+  noFolderItemsDescription: 'Tải tệp lên để bắt đầu lưu trữ trong thư mục này.',
+  noResults: 'Không có kết quả', noResultsDescription: 'Không tìm thấy tệp hoặc thư mục theo từ khóa này.',
+  emptyPage: 'Trang này không còn mục nào.', firstPage: 'Về trang đầu', clearSearch: 'Xóa tìm kiếm', retry: 'Thử lại',
+  previousPage: 'Trang trước', nextPage: 'Trang sau', pagination: 'Phân trang', items: 'mục', page: 'Trang', updated: 'Cập nhật',
+  email: 'Email', password: 'Mật khẩu', signIn: 'Đăng nhập', signInTitle: 'Đăng nhập vào tài khoản',
+  signingIn: 'Đang đăng nhập…', signOut: 'Đăng xuất', account: 'Tài khoản',
+  signOutPending: 'Đang đăng xuất…', showPassword: 'Hiện mật khẩu', hidePassword: 'Ẩn mật khẩu',
+  sessionTitle: 'Phiên đăng nhập đã hết hạn',
+  sessionDescription: 'Đăng nhập lại để tiếp tục. Nội dung bạn đang nhập được giữ lại khi dùng cùng tài khoản.',
+  uploadTitle: 'Tải tệp lên', uploadDescription: 'Chọn hoặc kéo tệp vào bên dưới để tải lên thư mục này.',
+  chooseFiles: 'Chọn tệp', dropFiles: 'hoặc kéo và thả vào đây', queued: 'Chờ tải lên', uploading: 'Đang tải lên',
+  processing: 'Đang lưu tệp…', uploaded: 'Đã tải lên', failed: 'Tải lên thất bại', unknown: 'Chưa rõ kết quả',
+  uploadUnknown: 'Kết nối bị gián đoạn hoặc máy chủ chưa xác nhận kết quả. Tệp có thể đã được lưu. Làm mới danh sách để kiểm tra trước khi chọn gửi lại.',
+  uploadInterrupted: 'Phiên đã hết hạn. Đăng nhập lại để thử tải các tệp chưa được lưu.',
+  refreshList: 'Làm mới danh sách', refreshedList: 'Đã làm mới danh sách. Đóng hộp thoại để kiểm tra tệp trước khi gửi lại.',
+  uploadSelected: 'Tải lên các tệp đã chọn', retryFile: 'Thử lại tệp', removeFile: 'Bỏ tệp',
+  rename: 'Đổi tên', renameTitle: 'Đổi tên tệp', renameDescription: 'Tên mới sẽ xuất hiện trong Drive và khi tải về.',
+  fileName: 'Tên tệp', fileNameRequired: 'Nhập tên tệp để tiếp tục.', fileRenamed: 'Đã đổi tên tệp.',
+  download: 'Tải xuống', save: 'Lưu', saving: 'Đang lưu…', cancel: 'Hủy', discard: 'Bỏ thay đổi',
+  keepEditing: 'Tiếp tục chỉnh sửa', discardRename: 'Bỏ tên mới vừa nhập?',
+  discardUpload: 'Đóng danh sách tải lên? Các tệp đã chọn hoặc chưa lưu sẽ bị bỏ khỏi danh sách.',
+  requestFailed: 'Không hoàn tất được thao tác. Vui lòng thử lại.',
+  invalidRequest: 'Giá trị nhập chưa hợp lệ. Vui lòng kiểm tra lại.',
+  invalidCredentials: 'Email hoặc mật khẩu chưa đúng.', forbidden: 'Bạn không có quyền thực hiện thao tác này.',
+  notFound: 'Không tìm thấy mục hoặc bạn không có quyền truy cập.', quota: 'Không đủ dung lượng để lưu tệp này.',
+  fileTooLarge: 'Tệp vượt giới hạn dung lượng tải lên.', unsupported: 'Định dạng tệp này chưa được hỗ trợ.',
+  rateLimited: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.', storageUnavailable: 'Kho lưu trữ tạm thời gián đoạn.',
+  staleClient: 'Giao diện chưa tải được', staleClientDescription: 'Tải lại để mở phiên bản mới nhất.',
+  refresh: 'Tải lại', language: 'Ngôn ngữ', skip: 'Đến nội dung chính', offline: 'Bạn đang ngoại tuyến.',
+};
+
+type Dictionary = { [Key in keyof typeof vi]: string };
+const en: Dictionary = {
+  app: 'Cloud Drive', myDrive: 'My Drive', home: 'Home', search: 'Search in Drive', searchPlaceholder: 'Search',
+  newItem: 'New', upload: 'Upload files', folder: 'Folder', folders: 'Folders', files: 'Files',
+  openNavigation: 'Open navigation', navigation: 'Main navigation', close: 'Close', breadcrumb: 'Folder path',
+  display: 'View mode', grid: 'Grid view', list: 'List view',
+  loading: 'Loading…', updating: 'Updating…', noFolderItems: 'Folder is empty',
+  noFolderItemsDescription: 'Upload files to start storing them in this folder.',
+  noResults: 'No results', noResultsDescription: 'No files or folders match this search.',
+  emptyPage: 'There are no items left on this page.', firstPage: 'Go to the first page', clearSearch: 'Clear search', retry: 'Try again',
+  previousPage: 'Previous page', nextPage: 'Next page', pagination: 'Pagination', items: 'items', page: 'Page', updated: 'Updated',
+  email: 'Email', password: 'Password', signIn: 'Sign in', signInTitle: 'Sign in to your account',
+  signingIn: 'Signing in…', signOut: 'Sign out', account: 'Account',
+  signOutPending: 'Signing out…', showPassword: 'Show password', hidePassword: 'Hide password',
+  sessionTitle: 'Your session expired',
+  sessionDescription: 'Sign in again to continue. Your edits stay in place when you use the same account.',
+  uploadTitle: 'Upload files', uploadDescription: 'Choose files or drop them below to add them to this folder.',
+  chooseFiles: 'Choose files', dropFiles: 'or drag and drop files here', queued: 'Queued', uploading: 'Uploading',
+  processing: 'Saving file…', uploaded: 'Uploaded', failed: 'Upload failed', unknown: 'Result unknown',
+  uploadUnknown: 'The server did not confirm the result. The file may already be saved. Refresh the list and check before sending it again.',
+  uploadInterrupted: 'Your session expired. Sign in again to upload any files that were not saved.',
+  refreshList: 'Refresh the list', refreshedList: 'List refreshed. Close this dialog and check for the file before sending it again.',
+  uploadSelected: 'Upload selected files', retryFile: 'Retry file', removeFile: 'Remove file',
+  rename: 'Rename', renameTitle: 'Rename file', renameDescription: 'The new name appears in Drive and when you download the file.',
+  fileName: 'File name', fileNameRequired: 'Enter a file name to continue.', fileRenamed: 'File renamed.',
+  download: 'Download', save: 'Save', saving: 'Saving…', cancel: 'Cancel', discard: 'Discard changes',
+  keepEditing: 'Keep editing', discardRename: 'Discard the new name?',
+  discardUpload: 'Close the upload list? Selected and unsaved files will be removed from the list.',
+  requestFailed: 'The action could not be completed. Try again.',
+  invalidRequest: 'A value is invalid. Check your input.',
+  invalidCredentials: 'The email or password is incorrect.', forbidden: 'You do not have permission for this action.',
+  notFound: 'This item could not be found or is outside your access.', quota: 'There is not enough storage for this file.',
+  fileTooLarge: 'The file exceeds the upload size limit.', unsupported: 'This file format is not supported.',
+  rateLimited: 'Too many requests. Try again later.', storageUnavailable: 'Storage is temporarily unavailable.',
+  staleClient: 'Could not load the page', staleClientDescription: 'Reload to open the latest version.',
+  refresh: 'Reload', language: 'Language', skip: 'Skip to main content', offline: 'You are offline.',
+};
+
+export type Locale = 'vi' | 'en';
+export const dictionaries = { vi, en };
+
+const errorMessages: Record<string, keyof Dictionary> = {
+  INVALID_CREDENTIALS: 'invalidCredentials', INVALID_REQUEST: 'invalidRequest', SESSION_REQUIRED: 'sessionTitle',
+  FORBIDDEN: 'forbidden', NOT_FOUND: 'notFound', STORAGE_QUOTA_EXCEEDED: 'quota', FILE_TOO_LARGE: 'fileTooLarge',
+  UNSUPPORTED_MEDIA_TYPE: 'unsupported', RATE_LIMITED: 'rateLimited', STORAGE_UNAVAILABLE: 'storageUnavailable',
+  UPLOAD_UNKNOWN: 'uploadUnknown',
+};
+
+export function localizedError(error: unknown, dictionary: Dictionary) {
+  const key = error instanceof ApiError ? errorMessages[error.code] : undefined;
+  return dictionary[key ?? 'requestFailed'];
+}

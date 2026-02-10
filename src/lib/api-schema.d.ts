@@ -693,8 +693,8 @@ export interface operations {
             200: {
                 headers: {
                     /**
-                     * @description Attachment disposition with a safe ASCII filename fallback and a filename* parameter containing the percent-encoded UTF-8 display name.
-                     * @example attachment; filename="bao-cao.pdf"; filename*=UTF-8''b%C3%A1o-c%C3%A1o.pdf
+                     * @description Attachment disposition with the percent-encoded UTF-8 display name in filename*. filename is included when the same display name fits in the ASCII parameter.
+                     * @example attachment; filename*=UTF-8''b%C3%A1o-c%C3%A1o.pdf
                      */
                     "Content-Disposition"?: string;
                     "Cache-Control": components["headers"]["PrivateCache"];
