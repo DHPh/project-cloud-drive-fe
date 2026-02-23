@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
   title: Cloud Drive API
-  version: 0.1.0
+  version: 0.2.0
   description: >-
-    Browser API for sign-in, folder browsing, upload, file editing, and download.
+    Browser API for sign-in, folder browsing, upload, file editing, download, and file trash.
     State-changing browser requests require the configured application Origin.
 servers:
   - url: /api/v1
@@ -13,6 +13,7 @@ tags:
   - name: Session
   - name: Folders
   - name: Files
+  - name: Trash
 
 paths:
   /auth/login:
@@ -128,6 +129,7 @@ paths:
         and folder list after filtering. Results sort by kind (folders first), then
         by display name without case sensitivity, then by ID in ascending order.
         A page past the last result returns an empty items array.
+        Files in Trash are excluded from listing and search.
       parameters:
         - $ref: '#/components/parameters/FolderId'
         - $ref: '#/components/parameters/Page'
@@ -217,6 +219,7 @@ paths:
       description: >-
         At least one field is required. Omitted fields keep their current values.
         Set description to null or tags to an empty array to clear them.
+        Files in Trash return 404.
       parameters:
         - $ref: '#/components/parameters/FileId'
       requestBody:
@@ -250,6 +253,7 @@ paths:
       operationId: downloadFile
       tags: [Files]
       summary: Download the file as an attachment
+      description: Files in Trash return 404.
       parameters:
         - $ref: '#/components/parameters/FileId'
       responses:
@@ -280,6 +284,81 @@ paths:
           $ref: '#/components/responses/InternalError'
         '503':
           $ref: '#/components/responses/StorageUnavailable'
+
+  /files/{fileId}/trash:
+    post:
+      operationId: trashFile
+      tags: [Trash]
+      summary: Move a file to Trash
+      description: >-
+        The owner can move a ready file to Trash. Repeating the request leaves the
+        original trashedAt unchanged. File ID, folder, object, and storage usage are preserved.
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          $ref: '#/components/responses/FileTrashState'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /files/{fileId}/restore:
+    post:
+      operationId: restoreFile
+      tags: [Trash]
+      summary: Restore a file to its original location
+      description: >-
+        The owner can restore a ready file to its original folder or root.
+        Repeating the request on an active file returns the same active state.
+        File ID, folder, object, and storage usage are preserved.
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          $ref: '#/components/responses/FileTrashState'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /trash:
+    get:
+      operationId: listTrash
+      tags: [Trash]
+      summary: List the signed-in user's files in Trash
+      description: >-
+        Items are ordered by newest trashedAt, then by ID in ascending order.
+        A page past the last result returns an empty items array.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of files in the signed-in user's Trash.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrashListResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
 components:
   securitySchemes:
@@ -332,6 +411,15 @@ components:
         enum: ['private, no-store']
 
   responses:
+    FileTrashState:
+      description: Current Trash state of the file after the operation.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FileTrashStateResponse'
     InvalidRequest:
       description: A path, query, or body field is invalid.
       headers:
@@ -643,7 +731,7 @@ components:
         total:
           type: integer
           minimum: 0
-          description: Total visible direct children matching the filter.
+          description: Total visible items matching the resource filters.
         totalPages:
           type: integer
           minimum: 0
@@ -678,6 +766,49 @@ components:
                 $ref: '#/components/schemas/FolderItem'
         pagination:
           $ref: '#/components/schemas/Pagination'
+    TrashItem:
+      allOf:
+        - $ref: '#/components/schemas/FileSummary'
+        - type: object
+          required: [trashedAt]
+          properties:
+            trashedAt:
+              type: string
+              format: date-time
+    TrashListResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/TrashItem'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    FileTrashStateResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [id, trashedAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            trashedAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: Time moved to Trash, or null when active.
     UpdateFileRequest:
       type: object
       minProperties: 1

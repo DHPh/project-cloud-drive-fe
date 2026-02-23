@@ -14,6 +14,10 @@ type LogoutResponse = operations['logout']['responses'][200]['content']['applica
 type FolderResponse = operations['listFolderContents']['responses'][200]['content']['application/json'];
 type FileResponse = operations['uploadFile']['responses'][201]['content']['application/json'];
 type RenameResponse = operations['updateFile']['responses'][200]['content']['application/json'];
+type TrashListResponse = operations['listTrash']['responses'][200]['content']['application/json'];
+type TrashResponse = operations['trashFile']['responses'][200]['content']['application/json'];
+type RestoreResponse = operations['restoreFile']['responses'][200]['content']['application/json'];
+export type TrashItem = TrashListResponse['data']['items'][number];
 
 export class ApiError extends Error {
   constructor(readonly status: number, readonly code: string) {
@@ -67,6 +71,20 @@ export function listFolder(folder: string, search: string, page: number, signal:
 
 export async function renameFile(fileId: string, originalName: string, signal: AbortSignal) {
   const result = await json<RenameResponse>(`/files/${encodeURIComponent(fileId)}`, jsonOptions('PATCH', { originalName }, signal));
+  return result.data;
+}
+
+export function listTrash(page: number, signal: AbortSignal) {
+  return json<TrashListResponse>(`/trash?page=${page}`, { signal });
+}
+
+export async function trashFile(fileId: string, signal: AbortSignal) {
+  const result = await json<TrashResponse>(`/files/${encodeURIComponent(fileId)}/trash`, { method: 'POST', signal });
+  return result.data;
+}
+
+export async function restoreFile(fileId: string, signal: AbortSignal) {
+  const result = await json<RestoreResponse>(`/files/${encodeURIComponent(fileId)}/restore`, { method: 'POST', signal });
   return result.data;
 }
 

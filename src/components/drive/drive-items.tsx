@@ -1,19 +1,11 @@
 'use client';
 
-import { ArrowDownTrayIcon, DocumentIcon, DocumentTextIcon, FilmIcon, FolderIcon, MusicalNoteIcon, PencilSquareIcon, PhotoIcon, TableCellsIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, DocumentIcon, DocumentTextIcon, FilmIcon, FolderIcon, MusicalNoteIcon, PencilSquareIcon, PhotoIcon, TableCellsIcon, TrashIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { downloadUrl, type FileItem, type FolderItem } from '@/lib/api';
+import { readableSize } from '@/lib/file-details';
 import { driveHref, type DriveView } from '@/lib/routes';
 import { useLocale } from '../providers';
-
-function readableSize(bytes: number, locale: string) {
-  if (bytes < 1024) return `${bytes} B`;
-  const tiers = ['KB', 'MB', 'GB', 'TB'];
-  let value = bytes / 1024;
-  let tier = 0;
-  while (value >= 1024 && tier < tiers.length - 1) { value /= 1024; tier++; }
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value)} ${tiers[tier]}`;
-}
 
 function fileIcon(mimeType: string) {
   if (mimeType.startsWith('image/')) return { Icon: PhotoIcon, classes: 'bg-emerald-100 text-emerald-700' };
@@ -24,9 +16,10 @@ function fileIcon(mimeType: string) {
   return { Icon: DocumentIcon, classes: 'bg-primary-100 text-primary-800' };
 }
 
-type Props = { title: string; items: FolderItem[]; view: DriveView; onRename: (file: FileItem, trigger: HTMLElement) => void };
+type FileAction = (file: FileItem, trigger: HTMLElement) => void;
+type Props = { title: string; items: FolderItem[]; view: DriveView; onRename: FileAction; onTrash: FileAction };
 
-export function DriveItems({ title, items, view, onRename }: Props) {
+export function DriveItems({ title, items, view, onRename, onTrash }: Props) {
   const { locale, text } = useLocale();
   if (items.length === 0) return null;
   const grid = view === 'grid';
@@ -71,6 +64,7 @@ export function DriveItems({ title, items, view, onRename }: Props) {
                   <div className={`flex shrink-0 justify-end gap-1 ${grid ? 'rounded-b-lg border-t border-gray-100 bg-gray-50 px-2 py-1' : ''}`}>
                     <button type="button" data-testid="file-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.rename} aria-label={`${text.rename}: ${name}`} onClick={(event) => onRename(item, event.currentTarget)}><PencilSquareIcon className="h-4 w-4" /></button>
                     <a data-testid="file-download" href={downloadUrl(item.id)} download={name} className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.download} aria-label={`${text.download}: ${name}`}><ArrowDownTrayIcon className="h-4 w-4" /></a>
+                    <button id={`drive-trash-${item.id}`} type="button" data-testid="file-trash" className="icon-button h-11 w-11 hover:bg-red-50 hover:text-red-800 sm:h-10 sm:w-8" title={text.moveToTrash} aria-label={`${text.moveToTrash}: ${name}`} onClick={(event) => onTrash(item, event.currentTarget)}><TrashIcon aria-hidden="true" className="h-4 w-4" /></button>
                   </div>
                 </>
               )}

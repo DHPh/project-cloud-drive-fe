@@ -4,35 +4,28 @@ import { ArrowUpTrayIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, HomeIco
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, currentUser, listFolder, logout, type FileItem, type User } from '@/lib/api';
+import { useEffect, useRef, useState } from 'react';
+import { ApiError, listFolder, type FileItem, type User } from '@/lib/api';
 import { localizedError } from '@/lib/messages';
 import { driveHref, pageNumber, type DriveView } from '@/lib/routes';
-import { publishSessionChange, subscribeToSessionChanges } from '@/lib/session-events';
-import { LoginForm } from '../login-form';
-import { Overlay } from '../overlay';
+import { useAccountSession } from '../account-session';
 import { useLocale } from '../providers';
 import { DriveItems } from './drive-items';
 import { DriveLayout } from './drive-layout';
 import { RenameDialog } from './rename-dialog';
+import { TrashDialog } from './trash-dialog';
 import { UploadDialog } from './upload-dialog';
 
-type ActiveDialog = { kind: 'upload'; trigger: HTMLElement | null } | { kind: 'rename'; file: FileItem; trigger: HTMLElement };
+type ActiveDialog = { kind: 'upload'; trigger: HTMLElement | null } | { kind: 'rename' | 'trash'; file: FileItem; trigger: HTMLElement };
 
 export function DriveScreen({ initialUser }: { initialUser: User }) {
-  const queryClient = useQueryClient();
-  const [user, setUser] = useState(initialUser);
-  const [expired, setExpired] = useState(false);
-  const { text } = useLocale();
   const params = useSearchParams();
   const folder = params.get('folder') || 'root';
   const search = params.get('q') || '';
   const page = pageNumber(params.get('page'));
   const view: DriveView = params.get('view') === 'list' ? 'list' : 'grid';
-  const activeUrl = driveHref(folder, search, page, view);
+  const session = useAccountSession(initialUser, driveHref(folder, search, page, view));
   const previousFolder = useRef(folder);
-
-  const expire = useCallback(() => setExpired(true), []);
 
   useEffect(() => {
     if (previousFolder.current === folder) return;
@@ -40,47 +33,23 @@ export function DriveScreen({ initialUser }: { initialUser: User }) {
     document.getElementById('drive-main')?.focus({ preventScroll: true });
   }, [folder]);
 
-  useEffect(() => subscribeToSessionChanges(() => {
-    void queryClient.cancelQueries().finally(() => {
-      queryClient.clear();
-      window.location.reload();
-    });
-  }), [queryClient]);
-
-  async function reauthenticate(nextUser: User) {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    if (nextUser.id !== user.id) {
-      publishSessionChange();
-      window.location.replace(activeUrl);
-      return;
-    }
-    setUser(nextUser);
-    setExpired(false);
-  }
-
   return (
     <>
-      <DriveFolder key={`${user.id}:${folder}`} user={user} folder={folder} search={search} page={page} view={view} expired={expired} onExpired={expire} />
-      {expired && (
-        <Overlay title={text.sessionTitle} description={text.sessionDescription}>
-          <LoginForm email={user.email} onSuccess={reauthenticate} className="min-h-0 overflow-y-auto p-5 sm:p-6" />
-        </Overlay>
-      )}
+      <DriveFolder key={`${session.user.id}:${folder}`} session={session} folder={folder} search={search} page={page} view={view} />
+      {session.sessionDialog}
     </>
   );
 }
 
-type FolderProps = { user: User; folder: string; search: string; page: number; view: DriveView; expired: boolean; onExpired: () => void };
+type FolderProps = { session: ReturnType<typeof useAccountSession>; folder: string; search: string; page: number; view: DriveView };
 
-function DriveFolder({ user, folder, search, page, view, expired, onExpired }: FolderProps) {
+function DriveFolder({ session, folder, search, page, view }: FolderProps) {
+  const { user, expired, expire: onExpired, signingOut, signOutError, signOut } = session;
   const { text, locale } = useLocale();
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<ActiveDialog | null>(null);
-  const [signingOut, setSigningOut] = useState(false);
-  const [signOutError, setSignOutError] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
-  const signOutLock = useRef(false);
+  const nextTrashFocus = useRef<string | null>(null);
 
   const queryKey = ['drive', user.id, folder, search, page] as const;
   const query = useQuery({
@@ -94,42 +63,12 @@ function DriveFolder({ user, folder, search, page, view, expired, onExpired }: F
     if (query.error instanceof ApiError && query.error.status === 401) onExpired();
   }, [query.error, onExpired]);
 
-  useEffect(() => {
-    const accountCheck = new AbortController();
-    void currentUser(accountCheck.signal).then((checked) => {
-      if (checked.id !== user.id) window.location.reload();
-    }).catch((error: unknown) => {
-      if (error instanceof ApiError && error.status === 401) onExpired();
-    });
-    return () => accountCheck.abort();
-  }, [onExpired, user.id]);
-
   function changeSearch(next: string) {
     if (next !== search) window.history.replaceState(null, '', driveHref(folder, next, 1, view));
   }
 
   function updateList() {
     void queryClient.invalidateQueries({ queryKey: ['drive', user.id, folder] });
-  }
-
-  async function signOut() {
-    if (signOutLock.current) return;
-    signOutLock.current = true;
-    setSigningOut(true);
-    setSignOutError(null);
-    try {
-      await logout();
-      setDialog(null);
-      await queryClient.cancelQueries();
-      queryClient.clear();
-      publishSessionChange();
-      window.location.replace('/login');
-    } catch (error) {
-      setSignOutError(localizedError(error, text));
-    } finally {
-      signOutLock.current = false;
-      setSigningOut(false);
-    }
   }
 
   const data = query.data;
@@ -140,11 +79,36 @@ function DriveFolder({ user, folder, search, page, view, expired, onExpired }: F
   const empty = data && data.data.items.length === 0 && !query.isPlaceholderData;
   const canGoNext = data && page < data.pagination.totalPages;
 
+  function openRename(file: FileItem, trigger: HTMLElement) {
+    setNotice('');
+    setDialog({ kind: 'rename', file, trigger });
+  }
+
+  function openTrash(file: FileItem, trigger: HTMLElement) {
+    setNotice('');
+    nextTrashFocus.current = null;
+    setDialog({ kind: 'trash', file, trigger });
+  }
+
+  function onMoved(fileId: string) {
+    const index = files.findIndex((file) => file.id === fileId);
+    const neighbor = index < 0 ? undefined : files[index + 1] ?? files[index - 1];
+    nextTrashFocus.current = neighbor ? `drive-trash-${neighbor.id}` : null;
+    queryClient.setQueryData(queryKey, (previous: typeof data) => previous && {
+      ...previous,
+      data: { ...previous.data, items: previous.data.items.filter((item) => item.id !== fileId) },
+    });
+    void queryClient.invalidateQueries({ queryKey: ['drive', user.id] });
+    void queryClient.invalidateQueries({ queryKey: ['trash', user.id] });
+    setDialog(null);
+    setNotice(text.fileTrashed);
+  }
+
   return (
     <DriveLayout
-      user={user} folder={folder} homeHref={homeHref} search={search} onSearch={changeSearch}
+      user={user} homeHref={homeHref}
       signingOut={signingOut} signOutError={signOutError} onSignOut={() => void signOut()}
-      onUpload={(trigger) => { setNotice(''); setDialog({ kind: 'upload', trigger }); }}
+      drive={{ folder, search, onSearch: changeSearch, onUpload: (trigger) => { setNotice(''); setDialog({ kind: 'upload', trigger }); } }}
     >
       <div className="mx-auto max-w-screen-2xl space-y-5 p-4 sm:p-6 lg:p-8">
         <h1 className="sr-only">{text.myDrive}</h1>
@@ -171,7 +135,7 @@ function DriveFolder({ user, folder, search, page, view, expired, onExpired }: F
             <button type="button" aria-label={text.list} title={text.list} aria-pressed={view === 'list'} className={`icon-button ${view === 'list' ? 'bg-white shadow-sm' : ''}`} onClick={() => window.history.replaceState(null, '', driveHref(folder, search, page, 'list'))}><ListBulletIcon className="h-5 w-5" /></button>
           </div>
         </div>
-        <span role="status" className="sr-only">{notice || (query.isFetching ? text.updating : '')}</span>
+        <p role="status" data-testid="drive-status" className={notice ? 'rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900' : 'sr-only'}>{notice || (query.isFetching ? text.updating : '')}</p>
         {search && (
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate rounded-full bg-primary-50 px-3 py-1.5 text-sm text-primary-900" title={search}>{search}</span>
@@ -209,8 +173,8 @@ function DriveFolder({ user, folder, search, page, view, expired, onExpired }: F
                 )}
               </div>
             )}
-            <DriveItems title={text.folders} items={folders} view={view} onRename={(file, trigger) => setDialog({ kind: 'rename', file, trigger })} />
-            <DriveItems title={text.files} items={files} view={view} onRename={(file, trigger) => { setNotice(''); setDialog({ kind: 'rename', file, trigger }); }} />
+            <DriveItems title={text.folders} items={folders} view={view} onRename={openRename} onTrash={openTrash} />
+            <DriveItems title={text.files} items={files} view={view} onRename={openRename} onTrash={openTrash} />
             {data.pagination.totalPages > 1 && (
               <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-4 text-sm">
                 <p className="text-gray-600">{text.page} {page} / {data.pagination.totalPages} · {new Intl.NumberFormat(locale).format(data.pagination.total)} {text.items}</p>
@@ -234,6 +198,12 @@ function DriveFolder({ user, folder, search, page, view, expired, onExpired }: F
           });
           updateList();
           setNotice(text.fileRenamed);
+        }} />
+      )}
+      {dialog?.kind === 'trash' && (
+        <TrashDialog file={dialog.file} suspended={expired} trigger={dialog.trigger} onDismiss={() => setDialog(null)} onExpired={onExpired} onMoved={onMoved} focusAfterMove={() => {
+          const neighbor = nextTrashFocus.current ? document.getElementById(nextTrashFocus.current) : null;
+          (neighbor ?? document.getElementById('drive-main'))?.focus();
         }} />
       )}
     </DriveLayout>

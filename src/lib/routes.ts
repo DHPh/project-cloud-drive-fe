@@ -11,13 +11,17 @@ export function driveHref(folder: string, q = '', page = 1, view: DriveView = 'g
   return query ? `/drive?${query}` : '/drive';
 }
 
-export function safeDriveRedirect(value: string | string[] | null | undefined) {
-  if (typeof value !== 'string' || (value !== '/drive' && !value.startsWith('/drive?'))) return '/drive';
+export function trashHref(page = 1) {
+  return page === 1 ? '/trash' : `/trash?page=${page}`;
+}
+
+export function safeAppRedirect(value: string | string[] | null | undefined) {
+  if (typeof value !== 'string' || !/^\/(drive|trash)(\?|$)/.test(value)) return '/drive';
   return value;
 }
 
 export function loginHref(redirect: string) {
-  const dest = safeDriveRedirect(redirect);
+  const dest = safeAppRedirect(redirect);
   return dest === '/drive' ? '/login' : `/login?${new URLSearchParams({ redirect: dest })}`;
 }
 

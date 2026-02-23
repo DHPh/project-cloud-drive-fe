@@ -67,7 +67,7 @@ export interface paths {
         };
         /**
          * List direct children of a folder
-         * @description Use root for the signed-in user's root. Pagination applies to the combined file and folder list after filtering. Results sort by kind (folders first), then by display name without case sensitivity, then by ID in ascending order. A page past the last result returns an empty items array.
+         * @description Use root for the signed-in user's root. Pagination applies to the combined file and folder list after filtering. Results sort by kind (folders first), then by display name without case sensitivity, then by ID in ascending order. A page past the last result returns an empty items array. Files in Trash are excluded from listing and search.
          */
         get: operations["listFolderContents"];
         put?: never;
@@ -113,7 +113,7 @@ export interface paths {
         head?: never;
         /**
          * Edit file name, description, or tags
-         * @description At least one field is required. Omitted fields keep their current values. Set description to null or tags to an empty array to clear them.
+         * @description At least one field is required. Omitted fields keep their current values. Set description to null or tags to an empty array to clear them. Files in Trash return 404.
          */
         patch: operations["updateFile"];
         trace?: never;
@@ -125,8 +125,71 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download the file as an attachment */
+        /**
+         * Download the file as an attachment
+         * @description Files in Trash return 404.
+         */
         get: operations["downloadFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{fileId}/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move a file to Trash
+         * @description The owner can move a ready file to Trash. Repeating the request leaves the original trashedAt unchanged. File ID, folder, object, and storage usage are preserved.
+         */
+        post: operations["trashFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{fileId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore a file to its original location
+         * @description The owner can restore a ready file to its original folder or root. Repeating the request on an active file returns the same active state. File ID, folder, object, and storage usage are preserved.
+         */
+        post: operations["restoreFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the signed-in user's files in Trash
+         * @description Items are ordered by newest trashedAt, then by ID in ascending order. A page past the last result returns an empty items array.
+         */
+        get: operations["listTrash"];
         put?: never;
         post?: never;
         delete?: never;
@@ -231,7 +294,7 @@ export interface components {
             page: number;
             /** @description The effective page size applied to the query. */
             limit: number;
-            /** @description Total visible direct children matching the filter. */
+            /** @description Total visible items matching the resource filters. */
             total: number;
             /** @description Total number of pages, with zero pages for an empty result. */
             totalPages: number;
@@ -247,6 +310,29 @@ export interface components {
             };
             pagination: components["schemas"]["Pagination"];
         };
+        TrashItem: components["schemas"]["FileSummary"] & {
+            /** Format: date-time */
+            trashedAt: string;
+        };
+        TrashListResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                items: components["schemas"]["TrashItem"][];
+            };
+            pagination: components["schemas"]["Pagination"];
+        };
+        FileTrashStateResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                /** Format: uuid */
+                id: string;
+                /**
+                 * Format: date-time
+                 * @description Time moved to Trash, or null when active.
+                 */
+                trashedAt: string | null;
+            };
+        };
         UpdateFileRequest: {
             originalName?: components["schemas"]["FileName"];
             description?: components["schemas"]["FileDescription"];
@@ -258,6 +344,16 @@ export interface components {
         };
     };
     responses: {
+        /** @description Current Trash state of the file after the operation. */
+        FileTrashState: {
+            headers: {
+                "Cache-Control": components["headers"]["PrivateCache"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["FileTrashStateResponse"];
+            };
+        };
         /** @description A path, query, or body field is invalid. */
         InvalidRequest: {
             headers: {
@@ -709,6 +805,71 @@ export interface operations {
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
             503: components["responses"]["StorageUnavailable"];
+        };
+    };
+    trashFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["FileTrashState"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    restoreFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["FileTrashState"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listTrash: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of files in the signed-in user's Trash. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrashListResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            500: components["responses"]["InternalError"];
         };
     };
 }
