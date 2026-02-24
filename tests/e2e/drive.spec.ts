@@ -103,6 +103,20 @@ async function recordScreenshot(page: Page, testInfo: TestInfo, name: string) {
   await testInfo.attach(name, { path, contentType: 'image/png' })
 }
 
+test('login is disabled before client hydration', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, javaScriptEnabled: false })
+  try {
+    const page = await context.newPage()
+    await page.goto('/login')
+    await expect(page.locator('form')).toHaveAttribute('method', 'post')
+    await expect(page.getByTestId('login-email')).toBeDisabled()
+    await expect(page.getByTestId('login-password')).toBeDisabled()
+    await expect(page.getByTestId('login-submit')).toBeDisabled()
+  } finally {
+    await context.close()
+  }
+})
+
 test('deep link, upload, Unicode rename, download bytes, and logout', async ({ page }, testInfo) => {
   const suffix = randomUUID().slice(0, 8)
   const destination = `${driveUrl(fixture.projects)}&q=${suffix}`

@@ -3,13 +3,15 @@
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useId, useRef, useState } from 'react';
+import { type FormEvent, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { login, type User } from '@/lib/api';
 import { localizedError } from '@/lib/messages';
 import { publishSessionChange } from '@/lib/session-events';
 import { BrandIcon } from './brand';
 import { LanguageSwitch } from './language-switch';
 import { useLocale } from './providers';
+
+const subscribeHydration = () => () => undefined;
 
 export function LoginForm({ onSuccess, email, className = '' }: { onSuccess: (user: User) => Promise<void>; email?: string; className?: string }) {
   const { text } = useLocale();
@@ -18,10 +20,13 @@ export function LoginForm({ onSuccess, email, className = '' }: { onSuccess: (us
   const [error, setError] = useState<string | null>(null);
   const submitting = useRef(false);
   const prefix = useId();
+  // A server-rendered form must wait for its client submit handler.
+  const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
+  const formDisabled = !hydrated || pending;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submitting.current) return;
+    if (!hydrated || submitting.current) return;
     const form = new FormData(event.currentTarget);
     const address = String(form.get('email') ?? '').trim();
     const password = String(form.get('password') ?? '');
@@ -40,25 +45,25 @@ export function LoginForm({ onSuccess, email, className = '' }: { onSuccess: (us
   }
 
   return (
-    <form onSubmit={submit} className={`space-y-5 ${className}`}>
+    <form method="post" onSubmit={submit} className={`space-y-5 ${className}`}>
       <div>
         <label htmlFor={`${prefix}-email`} className="mb-1.5 block text-sm font-medium text-gray-700">{text.email}</label>
         <input
           id={`${prefix}-email`} name="email" data-testid="login-email" type="email" className="field"
-          autoComplete="username" autoCapitalize="none" spellCheck={false} defaultValue={email} required
+          autoComplete="username" autoCapitalize="none" spellCheck={false} defaultValue={email} disabled={formDisabled} required
         />
       </div>
       <div>
         <label htmlFor={`${prefix}-password`} className="mb-1.5 block text-sm font-medium text-gray-700">{text.password}</label>
         <div className="relative">
-          <input id={`${prefix}-password`} name="password" data-testid="login-password" type={showPassword ? 'text' : 'password'} className="field pr-12" autoComplete="current-password" required />
-          <button type="button" className="icon-button absolute right-0.5 top-0.5" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? text.hidePassword : text.showPassword}>
+          <input id={`${prefix}-password`} name="password" data-testid="login-password" type={showPassword ? 'text' : 'password'} className="field pr-12" autoComplete="current-password" disabled={formDisabled} required />
+          <button type="button" className="icon-button absolute right-0.5 top-0.5" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? text.hidePassword : text.showPassword} disabled={formDisabled}>
             {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
           </button>
         </div>
       </div>
       {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
-      <button type="submit" data-testid="login-submit" className="button button-primary w-full" disabled={pending}>
+      <button type="submit" data-testid="login-submit" className="button button-primary w-full" disabled={formDisabled}>
         {pending ? text.signingIn : text.signIn}
       </button>
     </form>
