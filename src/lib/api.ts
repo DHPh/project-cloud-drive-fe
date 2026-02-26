@@ -17,7 +17,14 @@ type RenameResponse = operations['updateFile']['responses'][200]['content']['app
 type TrashListResponse = operations['listTrash']['responses'][200]['content']['application/json'];
 type TrashResponse = operations['trashFile']['responses'][200]['content']['application/json'];
 type RestoreResponse = operations['restoreFile']['responses'][200]['content']['application/json'];
+type FileDetailResponse = operations['getFile']['responses'][200]['content']['application/json'];
+type FileSharesResponse = operations['listFileShares']['responses'][200]['content']['application/json'];
+type GrantShareRequest = operations['grantFileShare']['requestBody']['content']['application/json'];
+type GrantShareResponse = operations['grantFileShare']['responses'][200]['content']['application/json'];
+type RevokeShareResponse = operations['revokeFileShare']['responses'][200]['content']['application/json'];
+type SharedFilesResponse = operations['listSharedFiles']['responses'][200]['content']['application/json'];
 export type TrashItem = TrashListResponse['data']['items'][number];
+export type ShareGrant = FileSharesResponse['data']['items'][number];
 
 export class ApiError extends Error {
   constructor(readonly status: number, readonly code: string) {
@@ -86,6 +93,28 @@ export async function trashFile(fileId: string, signal: AbortSignal) {
 export async function restoreFile(fileId: string, signal: AbortSignal) {
   const result = await json<RestoreResponse>(`/files/${encodeURIComponent(fileId)}/restore`, { method: 'POST', signal });
   return result.data;
+}
+
+export async function getFile(fileId: string, signal: AbortSignal) {
+  return (await json<FileDetailResponse>(`/files/${encodeURIComponent(fileId)}`, { signal })).data;
+}
+
+export function listFileShares(fileId: string, page: number, signal: AbortSignal) {
+  return json<FileSharesResponse>(`/files/${encodeURIComponent(fileId)}/shares?page=${page}`, { signal });
+}
+
+export async function grantFileShare(fileId: string, grant: GrantShareRequest, signal: AbortSignal) {
+  return (await json<GrantShareResponse>(`/files/${encodeURIComponent(fileId)}/shares`, {
+    method: 'PUT', body: JSON.stringify(grant), headers: { 'Content-Type': 'application/json' }, signal,
+  })).data;
+}
+
+export async function revokeFileShare(fileId: string, recipientId: string, signal: AbortSignal) {
+  await json<RevokeShareResponse>(`/files/${encodeURIComponent(fileId)}/shares/${encodeURIComponent(recipientId)}`, { method: 'DELETE', signal });
+}
+
+export function listSharedFiles(page: number, signal: AbortSignal) {
+  return json<SharedFilesResponse>(`/shared-with-me?page=${page}`, { signal });
 }
 
 export function downloadUrl(fileId: string) {

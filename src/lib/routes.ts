@@ -15,8 +15,24 @@ export function trashHref(page = 1) {
   return page === 1 ? '/trash' : `/trash?page=${page}`;
 }
 
+export function sharedHref(page = 1) {
+  return page === 1 ? '/shared-with-me' : `/shared-with-me?page=${page}`;
+}
+
+const fileIdPattern = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
+const fileIdRegex = new RegExp(`^${fileIdPattern}$`, 'i');
+const fileRouteRegex = new RegExp(`^/files/${fileIdPattern}$`, 'i');
+
+export function isFileId(value: string) {
+  return fileIdRegex.test(value);
+}
+
+export function fileHref(fileId: string) {
+  return `/files/${encodeURIComponent(fileId)}`;
+}
+
 export function safeAppRedirect(value: string | string[] | null | undefined) {
-  if (typeof value !== 'string' || !/^\/(drive|trash)(\?|$)/.test(value)) return '/drive';
+  if (typeof value !== 'string' || !(/^\/(drive|trash|shared-with-me)(\?|$)/.test(value) || fileRouteRegex.test(value))) return '/drive';
   return value;
 }
 

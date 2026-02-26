@@ -7,16 +7,17 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, listFolder, type FileItem, type User } from '@/lib/api';
 import { localizedError } from '@/lib/messages';
-import { driveHref, pageNumber, type DriveView } from '@/lib/routes';
+import { driveHref, fileHref, pageNumber, type DriveView } from '@/lib/routes';
 import { useAccountSession } from '../account-session';
 import { useLocale } from '../providers';
 import { DriveItems } from './drive-items';
 import { DriveLayout } from './drive-layout';
 import { RenameDialog } from './rename-dialog';
+import { ShareDialog } from './share-dialog';
 import { TrashDialog } from './trash-dialog';
 import { UploadDialog } from './upload-dialog';
 
-type ActiveDialog = { kind: 'upload'; trigger: HTMLElement | null } | { kind: 'rename' | 'trash'; file: FileItem; trigger: HTMLElement };
+type ActiveDialog = { kind: 'upload'; trigger: HTMLElement | null } | { kind: 'rename' | 'trash'; file: FileItem; trigger: HTMLElement } | { kind: 'share'; file: FileItem; fileLink: string; trigger: HTMLElement };
 
 export function DriveScreen({ initialUser }: { initialUser: User }) {
   const params = useSearchParams();
@@ -90,6 +91,11 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
     setDialog({ kind: 'trash', file, trigger });
   }
 
+  function openShare(file: FileItem, trigger: HTMLElement) {
+    setNotice('');
+    setDialog({ kind: 'share', file, fileLink: new URL(fileHref(file.id), window.location.origin).href, trigger });
+  }
+
   function onMoved(fileId: string) {
     const index = files.findIndex((file) => file.id === fileId);
     const neighbor = index < 0 ? undefined : files[index + 1] ?? files[index - 1];
@@ -100,6 +106,8 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
     });
     void queryClient.invalidateQueries({ queryKey: ['drive', user.id] });
     void queryClient.invalidateQueries({ queryKey: ['trash', user.id] });
+    void queryClient.invalidateQueries({ queryKey: ['file', user.id, fileId] });
+    void queryClient.invalidateQueries({ queryKey: ['file-shares', user.id, fileId] });
     setDialog(null);
     setNotice(text.fileTrashed);
   }
@@ -173,8 +181,8 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
                 )}
               </div>
             )}
-            <DriveItems title={text.folders} items={folders} view={view} onRename={openRename} onTrash={openTrash} />
-            <DriveItems title={text.files} items={files} view={view} onRename={openRename} onTrash={openTrash} />
+            <DriveItems title={text.folders} items={folders} view={view} onRename={openRename} onTrash={openTrash} onShare={openShare} />
+            <DriveItems title={text.files} items={files} view={view} onRename={openRename} onTrash={openTrash} onShare={openShare} />
             {data.pagination.totalPages > 1 && (
               <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-4 text-sm">
                 <p className="text-gray-600">{text.page} {page} / {data.pagination.totalPages} · {new Intl.NumberFormat(locale).format(data.pagination.total)} {text.items}</p>
@@ -205,6 +213,9 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
           const neighbor = nextTrashFocus.current ? document.getElementById(nextTrashFocus.current) : null;
           (neighbor ?? document.getElementById('drive-main'))?.focus();
         }} />
+      )}
+      {dialog?.kind === 'share' && (
+        <ShareDialog file={dialog.file} fileLink={dialog.fileLink} trigger={dialog.trigger} userId={user.id} suspended={expired} onDismiss={() => setDialog(null)} onExpired={onExpired} />
       )}
     </DriveLayout>
   );

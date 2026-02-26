@@ -1,0 +1,281 @@
+'use client';
+
+import { ClipboardDocumentIcon } from '@heroicons/react/24/outline';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { ApiError, grantFileShare, listFileShares, revokeFileShare, type FileItem, type ShareGrant } from '@/lib/api';
+import { localizedError } from '@/lib/messages';
+import { expiryFromVietnamInput, expiryToVietnamInput, shareDateFormat } from '@/lib/share-expiry';
+import { Overlay } from '../overlay';
+import { useLocale } from '../providers';
+import { useShareExpiryRefresh } from '../use-share-expiry-refresh';
+
+type Props = {
+  file: FileItem;
+  fileLink: string;
+  userId: string;
+  trigger: HTMLElement;
+  suspended: boolean;
+  onDismiss: () => void;
+  onExpired: () => void;
+};
+
+export function ShareDialog({ file, fileLink, userId, trigger, suspended, onDismiss, onExpired }: Props) {
+  const { text, locale } = useLocale();
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [email, setEmail] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [editing, setEditing] = useState<ShareGrant | null>(null);
+  const [revoke, setRevoke] = useState<ShareGrant | null>(null);
+  const [discard, setDiscard] = useState(false);
+  const [pending, setPending] = useState<'save' | 'revoke' | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
+  const request = useRef<AbortController | null>(null);
+  const emailInput = useRef<HTMLInputElement>(null);
+  const expiryInput = useRef<HTMLInputElement>(null);
+  const linkInput = useRef<HTMLInputElement>(null);
+  const revokeCancel = useRef<HTMLButtonElement>(null);
+  const discardCancel = useRef<HTMLButtonElement>(null);
+  const expiryBeforeEdit = editing?.isActive ? expiryToVietnamInput(editing.expiresAt) : '';
+  const dirty = editing ? expiry !== expiryBeforeEdit : Boolean(email.trim() || expiry);
+  const dateFormat = shareDateFormat(locale);
+  const listKey = ['file-shares', userId, file.id] as const;
+  const query = useQuery({
+    queryKey: [...listKey, page],
+    queryFn: ({ signal }) => listFileShares(file.id, page, signal),
+    enabled: !suspended,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
+  });
+  const items = query.data?.data.items ?? [];
+  const pages = query.data?.pagination.totalPages ?? 0;
+  const canSave = !pending && !revoke && !discard;
+  useShareExpiryRefresh(suspended ? undefined : query.data?.data.items, query.refetch);
+
+  useEffect(() => () => request.current?.abort(), []);
+  useEffect(() => {
+    if (query.error instanceof ApiError && query.error.status === 401) onExpired();
+  }, [query.error, onExpired]);
+  useEffect(() => { if (revoke) revokeCancel.current?.focus(); }, [revoke]);
+  useEffect(() => { if (discard) discardCancel.current?.focus(); }, [discard]);
+
+  function resetForm() {
+    setEditing(null);
+    setEmail('');
+    setExpiry('');
+    setSaveError(null);
+  }
+
+  function dismiss() {
+    if (request.current) return;
+    if (revoke) {
+      cancelRevoke();
+      return;
+    }
+    if (dirty) setDiscard(true);
+    else onDismiss();
+  }
+
+  function editGrant(grant: ShareGrant) {
+    setEditing(grant);
+    setEmail(grant.recipientEmail);
+    setExpiry(grant.isActive ? expiryToVietnamInput(grant.expiresAt) : '');
+    setSaveError(null);
+    setNotice('');
+    expiryInput.current?.focus();
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canSave || request.current) return;
+    const explicitExpiry = expiry && expiry !== expiryBeforeEdit ? expiryFromVietnamInput(expiry) : undefined;
+    if (explicitExpiry === null) {
+      setSaveError(text.invalidShareExpiry);
+      expiryInput.current?.focus();
+      return;
+    }
+
+    const controller = new AbortController();
+    request.current = controller;
+    setPending('save');
+    setSaveError(null);
+    setNotice('');
+    try {
+      const result = await grantFileShare(file.id, { email: email.trim(), expiresAt: explicitExpiry }, controller.signal);
+      if (controller.signal.aborted) return;
+      resetForm();
+      if (!editing?.isActive) setPage(1);
+      setNotice(`${text.shareGranted} ${dateFormat.format(new Date(result.expiresAt))} (${text.vietnamTime}).`);
+      await queryClient.invalidateQueries({ queryKey: listKey });
+      emailInput.current?.focus();
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        if (error instanceof ApiError && error.status === 401) onExpired();
+        else setSaveError(localizedError(error, text));
+      }
+    } finally {
+      request.current = null;
+      if (!controller.signal.aborted) setPending(null);
+    }
+  }
+
+  function cancelRevoke() {
+    if (!revoke || request.current) return;
+    const triggerId = `share-revoke-${revoke.recipientId}`;
+    setRevoke(null);
+    setRevokeError(null);
+    requestAnimationFrame(() => document.getElementById(triggerId)?.focus());
+  }
+
+  async function confirmRevoke() {
+    if (!revoke || request.current) return;
+    const controller = new AbortController();
+    const recipientId = revoke.recipientId;
+    const row = items.findIndex((item) => item.recipientId === recipientId);
+    const neighbor = row < 0 ? undefined : items[row + 1] ?? items[row - 1];
+    request.current = controller;
+    setPending('revoke');
+    setRevokeError(null);
+    setNotice('');
+    try {
+      await revokeFileShare(file.id, recipientId, controller.signal);
+      if (controller.signal.aborted) return;
+      if (editing?.recipientId === recipientId) resetForm();
+      setRevoke(null);
+      if (items.length === 1 && page > 1) setPage(page - 1);
+      setNotice(text.shareRevoked);
+      await queryClient.invalidateQueries({ queryKey: listKey });
+      requestAnimationFrame(() => {
+        const next = neighbor ? document.getElementById(`share-edit-${neighbor.recipientId}`) : null;
+        (next ?? emailInput.current)?.focus();
+      });
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        if (error instanceof ApiError && error.status === 401) onExpired();
+        else setRevokeError(localizedError(error, text));
+      }
+    } finally {
+      request.current = null;
+      if (!controller.signal.aborted) setPending(null);
+    }
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(fileLink);
+      setNotice(text.shareCopied);
+    } catch {
+      linkInput.current?.focus();
+      linkInput.current?.select();
+      setNotice(text.shareCopyFallback);
+    }
+  }
+
+  return (
+    <Overlay
+      open={!suspended} testId="share-dialog" title={text.shareTitle} description={text.shareDescription}
+      initialFocus={emailInput} onDismiss={pending ? undefined : dismiss} restoreFocus={trigger}
+      restoreFallback={() => document.getElementById('drive-main')?.focus()}
+    >
+      <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
+        <p className="break-words text-sm font-semibold" title={file.originalName}>{file.originalName}</p>
+        <div>
+          <label htmlFor="share-link" className="mb-1 block text-sm font-medium">{text.shareLink}</label>
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+            <input ref={linkInput} id="share-link" data-testid="share-link" className="field min-w-0 flex-1" value={fileLink} readOnly />
+            <button type="button" data-testid="share-copy" className="button button-secondary min-h-11" onClick={() => void copyLink()}>
+              <ClipboardDocumentIcon aria-hidden="true" className="h-4 w-4" />{text.shareCopy}
+            </button>
+          </div>
+        </div>
+        <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border border-gray-200 p-3">
+          <div>
+            <label htmlFor="share-email" className="mb-1 block text-sm font-medium">{text.shareEmail}</label>
+            <input ref={emailInput} id="share-email" data-testid="share-email" type="email" autoComplete="off" required maxLength={254} spellCheck={false}
+              className="field" value={email} readOnly={Boolean(editing || pending)} onChange={(event) => setEmail(event.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="share-expiry" className="mb-1 block text-sm font-medium">{text.shareExpiry}</label>
+            <input ref={expiryInput} id="share-expiry" data-testid="share-expiry" type="datetime-local" step={60} className="field min-w-0"
+              value={expiry} readOnly={Boolean(pending)} aria-describedby="share-expiry-hint" onChange={(event) => setExpiry(event.target.value)} />
+            <p id="share-expiry-hint" className="mt-1 text-xs text-gray-600">{text.shareExpiryHint}</p>
+          </div>
+          {saveError && <p data-testid="share-error" role="alert" className="text-sm text-red-800">{saveError}</p>}
+          <div className="flex flex-wrap justify-end gap-2">
+            {editing && <button type="button" className="button button-secondary min-h-11" disabled={Boolean(pending)} onClick={resetForm}>{text.cancel}</button>}
+            <button type="submit" data-testid="share-submit" className="button button-primary min-h-11 aria-disabled:opacity-60" aria-disabled={!canSave} aria-busy={pending === 'save'}>
+              {pending === 'save' ? text.shareSaving : editing ? text.shareSaveExpiry : text.shareGrant}
+            </button>
+          </div>
+        </form>
+        <p role="status" data-testid="share-status" className={notice ? 'rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-900' : 'sr-only'}>{notice}</p>
+        <section aria-labelledby="share-recipient-heading" className="space-y-2">
+          <h3 id="share-recipient-heading" className="text-sm font-semibold">{text.shareRecipients}</h3>
+          {query.isPending && !suspended && <p role="status" data-testid="share-loading" className="text-sm text-gray-600">{text.loading}</p>}
+          {query.isError && !suspended && (
+            <div role="alert" className="space-y-2 rounded-lg bg-red-50 p-3 text-sm text-red-800">
+              <p>{localizedError(query.error, text)}</p>
+              <button type="button" data-testid="share-retry" className="button button-secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>
+            </div>
+          )}
+          {query.isSuccess && items.length === 0 && <p data-testid="share-empty" className="text-sm text-gray-600">{text.noShareRecipients}</p>}
+          {items.length > 0 && (
+            <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 px-3" aria-busy={query.isFetching}>
+              {items.map((item) => (
+                <li key={item.recipientId} data-testid="share-recipient" data-recipient-id={item.recipientId} data-recipient-status={item.isActive ? 'active' : 'expired'} className="py-2.5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-medium">{item.recipientName}</p>
+                      <p className="break-all text-sm text-gray-600">{item.recipientEmail}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-1 text-xs ${item.isActive ? 'bg-emerald-50 text-emerald-900' : 'bg-gray-100 text-gray-700'}`}>{item.isActive ? text.shareActive : text.shareExpired}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-gray-700">{text.expiresAt} <time data-testid="share-effective-expiry" dateTime={item.expiresAt}>{dateFormat.format(new Date(item.expiresAt))}</time> ({text.vietnamTime})</p>
+                  {revoke?.recipientId === item.recipientId ? (
+                    <div className="mt-2 space-y-2 rounded-md bg-amber-50 p-2 text-sm text-amber-950">
+                      <p>{text.shareRevokePrompt}</p>
+                      {revokeError && <p role="alert" className="text-red-800">{revokeError}</p>}
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <button type="button" ref={revokeCancel} data-testid="share-revoke-cancel" className="button button-secondary min-h-11" disabled={Boolean(pending)} onClick={cancelRevoke}>{text.cancel}</button>
+                        <button type="button" data-testid="share-revoke-confirm" className="button button-danger min-h-11 aria-disabled:opacity-60" aria-busy={pending === 'revoke'} aria-disabled={Boolean(pending)} onClick={() => void confirmRevoke()}>{pending === 'revoke' ? text.shareRevoking : text.shareRevoke}</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button type="button" id={`share-edit-${item.recipientId}`} data-testid="share-edit" className="button button-secondary min-h-11" disabled={!canSave} onClick={() => editGrant(item)}>{text.shareEdit}</button>
+                      <button type="button" id={`share-revoke-${item.recipientId}`} data-testid="share-revoke" className="button button-secondary min-h-11 text-red-800" disabled={!canSave} onClick={() => { setNotice(''); setRevoke(item); }}>{text.shareRevoke}</button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {pages > 1 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <p>{text.page} {page} / {pages}</p>
+              <div className="flex flex-wrap gap-2">
+                {page > 1 && <button type="button" className="button button-secondary" disabled={!canSave} onClick={() => setPage(page - 1)}>{text.previousPage}</button>}
+                {page < pages && <button type="button" className="button button-secondary" disabled={!canSave} onClick={() => setPage(page + 1)}>{text.nextPage}</button>}
+              </div>
+            </div>
+          )}
+        </section>
+        {discard && (
+          <div className="space-y-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-950">
+            <p>{text.discardShare}</p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" ref={discardCancel} className="button button-secondary min-h-11" onClick={() => { setDiscard(false); (editing ? expiryInput : emailInput).current?.focus(); }}>{text.keepEditing}</button>
+              <button type="button" className="button button-danger min-h-11" onClick={onDismiss}>{text.discard}</button>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="flex shrink-0 justify-end border-t border-gray-200 px-5 py-3 sm:px-6">
+        <button type="button" data-testid="share-close" className="button button-secondary min-h-11" onClick={dismiss} disabled={Boolean(pending)}>{text.close}</button>
+      </div>
+    </Overlay>
+  );
+}

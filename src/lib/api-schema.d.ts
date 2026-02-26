@@ -105,7 +105,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Read file information
+         * @description The owner or a recipient with an unexpired grant can read a ready, active file.
+         */
+        get: operations["getFile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -127,7 +131,7 @@ export interface paths {
         };
         /**
          * Download the file as an attachment
-         * @description Files in Trash return 404.
+         * @description The owner or a recipient with an unexpired grant can download the active file. Files in Trash return 404.
          */
         get: operations["downloadFile"];
         put?: never;
@@ -149,7 +153,7 @@ export interface paths {
         put?: never;
         /**
          * Move a file to Trash
-         * @description The owner can move a ready file to Trash. Repeating the request leaves the original trashedAt unchanged. File ID, folder, object, and storage usage are preserved.
+         * @description The owner can move a ready file to Trash. Repeating the request leaves the original trashedAt unchanged. File ID, folder, object, and storage usage are preserved. Moving the file to Trash revokes all sharing grants.
          */
         post: operations["trashFile"];
         delete?: never;
@@ -169,7 +173,7 @@ export interface paths {
         put?: never;
         /**
          * Restore a file to its original location
-         * @description The owner can restore a ready file to its original folder or root. Repeating the request on an active file returns the same active state. File ID, folder, object, and storage usage are preserved.
+         * @description The owner can restore a ready file to its original folder or root. Repeating the request on an active file returns the same active state. File ID, folder, object, and storage usage are preserved. Restoring a file does not restore sharing grants.
          */
         post: operations["restoreFile"];
         delete?: never;
@@ -190,6 +194,70 @@ export interface paths {
          * @description Items are ordered by newest trashedAt, then by ID in ascending order. A page past the last result returns an empty items array.
          */
         get: operations["listTrash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{fileId}/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List sharing grants for a file owned by the signed-in account
+         * @description Includes expired grants. Sorts by latest grantedAt, then recipient ID.
+         */
+        get: operations["listFileShares"];
+        /**
+         * Grant or update read and download access for an existing account
+         * @description Only the file owner may grant access to an active, ready file. Omitting expiresAt or passing null defaults a new grant to one calendar month from the time of granting, in Vietnam time. A repeated request with a blank expiry leaves an active grant's expiry unchanged. A future date-time can update an active grant. An expired grant can be granted again. An unknown recipient email returns 404 with code RECIPIENT_NOT_FOUND.
+         */
+        put: operations["grantFileShare"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{fileId}/shares/{recipientId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke the recipient's grant
+         * @description Only the file owner may revoke. Repeating revocation returns the same result.
+         */
+        delete: operations["revokeFileShare"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared-with-me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List files shared with the signed-in account
+         * @description Includes ready, active files with unexpired grants. Sorts by latest sharedAt, then file ID. A page past the last result returns an empty items array.
+         */
+        get: operations["listSharedFiles"];
         put?: never;
         post?: never;
         delete?: never;
@@ -337,6 +405,60 @@ export interface components {
             originalName?: components["schemas"]["FileName"];
             description?: components["schemas"]["FileDescription"];
             tags?: components["schemas"]["FileTags"];
+        };
+        GrantFileShareRequest: {
+            /** Format: email */
+            email: string;
+            /**
+             * Format: date-time
+             * @description Future expiration with a time zone. An omitted or null value applies the default policy.
+             */
+            expiresAt?: string | null;
+        };
+        ShareGrant: {
+            /** Format: uuid */
+            recipientId: string;
+            /** Format: email */
+            recipientEmail: string;
+            recipientName: string;
+            /** Format: date-time */
+            grantedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @description Whether the grant is valid at the time the response was generated. */
+            isActive: boolean;
+        };
+        FileShareResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["ShareGrant"];
+        };
+        FileSharesResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                items: components["schemas"]["ShareGrant"][];
+            };
+            pagination: components["schemas"]["Pagination"];
+        };
+        SharedFile: components["schemas"]["FileSummary"] & {
+            ownerName: string;
+            /** Format: date-time */
+            sharedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        SharedFilesResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                items: components["schemas"]["SharedFile"][];
+            };
+            pagination: components["schemas"]["Pagination"];
+        };
+        RevokeFileShareResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                /** @enum {boolean} */
+                revoked: true;
+            };
         };
         FileResponse: {
             success: components["schemas"]["Success"];
@@ -742,6 +864,33 @@ export interface operations {
             503: components["responses"]["StorageUnavailable"];
         };
     };
+    getFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Information for a file visible to the signed-in account. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
     updateFile: {
         parameters: {
             query?: never;
@@ -865,6 +1014,124 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrashListResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listFileShares: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of sharing grants. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileSharesResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    grantFileShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantFileShareRequest"];
+            };
+        };
+        responses: {
+            /** @description The current grant with its effective expiration. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileShareResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    revokeFileShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: components["parameters"]["FileId"];
+                recipientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The recipient can no longer access the file through this grant. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokeFileShareResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listSharedFiles: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of files shared with the current account. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedFilesResponse"];
                 };
             };
             400: components["responses"]["InvalidRequest"];

@@ -1,6 +1,6 @@
 # Cloud Drive Frontend
 
-Repo Next.js độc lập cho giao diện Cloud Drive. Mốc `DRIVE-01` giữ bố cục Drive từ bản Nuxt và hỗ trợ đăng nhập, mở thư mục, tìm kiếm, phân trang, upload, đổi tên, download và đăng xuất. Mốc `TRASH-01` bổ sung đưa từng tệp vào Thùng rác, xem danh sách và khôi phục về thư mục gốc. Repo backend `project-cloud-drive-be` cung cấp API, PostgreSQL và MinIO.
+Repo Next.js độc lập cho giao diện Cloud Drive. Mốc `DRIVE-01` giữ bố cục Drive từ bản Nuxt và hỗ trợ đăng nhập, mở thư mục, tìm kiếm, phân trang, upload, đổi tên, download và đăng xuất. Mốc `TRASH-01` bổ sung đưa từng tệp vào Thùng rác, xem danh sách và khôi phục về thư mục gốc. Mốc `SHARE-01` bổ sung cấp quyền theo tài khoản, hạn chia sẻ, thu hồi, link tệp và danh sách tệp được chia sẻ với mình. Repo backend `project-cloud-drive-be` cung cấp API, PostgreSQL và MinIO.
 
 - [Thiết kế UX](docs/ux.md)
 - [Bản OpenAPI của frontend](docs/contracts/openapi.yaml)

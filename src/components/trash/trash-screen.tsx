@@ -81,6 +81,8 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
       }
       void queryClient.invalidateQueries({ queryKey: ['trash', user.id] });
       void queryClient.invalidateQueries({ queryKey: ['drive', user.id] });
+      void queryClient.invalidateQueries({ queryKey: ['file', user.id, fileId] });
+      void queryClient.invalidateQueries({ queryKey: ['file-shares', user.id, fileId] });
       setNotice(text.fileRestored);
     } catch (failure) {
       if (!controller.signal.aborted) {

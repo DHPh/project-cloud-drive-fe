@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
   title: Cloud Drive API
-  version: 0.2.0
+  version: 0.3.0
   description: >-
-    Browser API for sign-in, folder browsing, upload, file editing, download, and file trash.
+    Browser API for sign-in, folder browsing, upload, file editing, download, file trash, and sharing.
     State-changing browser requests require the configured application Origin.
 servers:
   - url: /api/v1
@@ -14,6 +14,7 @@ tags:
   - name: Folders
   - name: Files
   - name: Trash
+  - name: Sharing
 
 paths:
   /auth/login:
@@ -212,6 +213,31 @@ paths:
         '503':
           $ref: '#/components/responses/StorageUnavailable'
   /files/{fileId}:
+    get:
+      operationId: getFile
+      tags: [Files, Sharing]
+      summary: Read file information
+      description: The owner or a recipient with an unexpired grant can read a ready, active file.
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: Information for a file visible to the signed-in account.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
     patch:
       operationId: updateFile
       tags: [Files]
@@ -253,7 +279,7 @@ paths:
       operationId: downloadFile
       tags: [Files]
       summary: Download the file as an attachment
-      description: Files in Trash return 404.
+      description: The owner or a recipient with an unexpired grant can download the active file. Files in Trash return 404.
       parameters:
         - $ref: '#/components/parameters/FileId'
       responses:
@@ -293,6 +319,7 @@ paths:
       description: >-
         The owner can move a ready file to Trash. Repeating the request leaves the
         original trashedAt unchanged. File ID, folder, object, and storage usage are preserved.
+        Moving the file to Trash revokes all sharing grants.
       parameters:
         - $ref: '#/components/parameters/FileId'
       responses:
@@ -317,6 +344,7 @@ paths:
         The owner can restore a ready file to its original folder or root.
         Repeating the request on an active file returns the same active state.
         File ID, folder, object, and storage usage are preserved.
+        Restoring a file does not restore sharing grants.
       parameters:
         - $ref: '#/components/parameters/FileId'
       responses:
@@ -353,6 +381,135 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrashListResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /files/{fileId}/shares:
+    get:
+      operationId: listFileShares
+      tags: [Sharing]
+      summary: List sharing grants for a file owned by the signed-in account
+      description: Includes expired grants. Sorts by latest grantedAt, then recipient ID.
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of sharing grants.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileSharesResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      operationId: grantFileShare
+      tags: [Sharing]
+      summary: Grant or update read and download access for an existing account
+      description: >-
+        Only the file owner may grant access to an active, ready file.
+        Omitting expiresAt or passing null defaults a new grant to one calendar
+        month from the time of granting, in Vietnam time. A repeated request with
+        a blank expiry leaves an active grant's expiry unchanged. A future date-time
+        can update an active grant. An expired grant can be granted again.
+        An unknown recipient email returns 404 with code RECIPIENT_NOT_FOUND.
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantFileShareRequest'
+      responses:
+        '200':
+          description: The current grant with its effective expiration.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileShareResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /files/{fileId}/shares/{recipientId}:
+    delete:
+      operationId: revokeFileShare
+      tags: [Sharing]
+      summary: Revoke the recipient's grant
+      description: Only the file owner may revoke. Repeating revocation returns the same result.
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+        - name: recipientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The recipient can no longer access the file through this grant.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeFileShareResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /shared-with-me:
+    get:
+      operationId: listSharedFiles
+      tags: [Sharing]
+      summary: List files shared with the signed-in account
+      description: >-
+        Includes ready, active files with unexpired grants. Sorts by latest sharedAt,
+        then file ID. A page past the last result returns an empty items array.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of files shared with the current account.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedFilesResponse'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -820,6 +977,107 @@ components:
           $ref: '#/components/schemas/FileDescription'
         tags:
           $ref: '#/components/schemas/FileTags'
+    GrantFileShareRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Future expiration with a time zone. An omitted or null value applies the default policy.
+    ShareGrant:
+      type: object
+      required: [recipientId, recipientEmail, recipientName, grantedAt, expiresAt, isActive]
+      properties:
+        recipientId:
+          type: string
+          format: uuid
+        recipientEmail:
+          type: string
+          format: email
+        recipientName:
+          type: string
+        grantedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+          description: Whether the grant is valid at the time the response was generated.
+    FileShareResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          $ref: '#/components/schemas/ShareGrant'
+    FileSharesResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/ShareGrant'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    SharedFile:
+      allOf:
+        - $ref: '#/components/schemas/FileSummary'
+        - type: object
+          required: [ownerName, sharedAt, expiresAt]
+          properties:
+            ownerName:
+              type: string
+            sharedAt:
+              type: string
+              format: date-time
+            expiresAt:
+              type: string
+              format: date-time
+    SharedFilesResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/SharedFile'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    RevokeFileShareResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [revoked]
+          properties:
+            revoked:
+              type: boolean
+              enum: [true]
     FileResponse:
       type: object
       required: [success, data]

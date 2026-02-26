@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDownTrayIcon, DocumentIcon, DocumentTextIcon, FilmIcon, FolderIcon, MusicalNoteIcon, PencilSquareIcon, PhotoIcon, TableCellsIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, DocumentIcon, DocumentTextIcon, FilmIcon, FolderIcon, MusicalNoteIcon, PencilSquareIcon, PhotoIcon, TableCellsIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { downloadUrl, type FileItem, type FolderItem } from '@/lib/api';
 import { readableSize } from '@/lib/file-details';
@@ -17,9 +17,9 @@ function fileIcon(mimeType: string) {
 }
 
 type FileAction = (file: FileItem, trigger: HTMLElement) => void;
-type Props = { title: string; items: FolderItem[]; view: DriveView; onRename: FileAction; onTrash: FileAction };
+type Props = { title: string; items: FolderItem[]; view: DriveView; onRename: FileAction; onTrash: FileAction; onShare: FileAction };
 
-export function DriveItems({ title, items, view, onRename, onTrash }: Props) {
+export function DriveItems({ title, items, view, onRename, onTrash, onShare }: Props) {
   const { locale, text } = useLocale();
   if (items.length === 0) return null;
   const grid = view === 'grid';
@@ -62,6 +62,7 @@ export function DriveItems({ title, items, view, onRename, onTrash }: Props) {
                     {details}{updated}
                   </div>
                   <div className={`flex shrink-0 justify-end gap-1 ${grid ? 'rounded-b-lg border-t border-gray-100 bg-gray-50 px-2 py-1' : ''}`}>
+                    <button type="button" data-testid="file-share" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.share} aria-label={`${text.share}: ${name}`} onClick={(event) => onShare(item, event.currentTarget)}><UserPlusIcon aria-hidden="true" className="h-4 w-4" /></button>
                     <button type="button" data-testid="file-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.rename} aria-label={`${text.rename}: ${name}`} onClick={(event) => onRename(item, event.currentTarget)}><PencilSquareIcon className="h-4 w-4" /></button>
                     <a data-testid="file-download" href={downloadUrl(item.id)} download={name} className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.download} aria-label={`${text.download}: ${name}`}><ArrowDownTrayIcon className="h-4 w-4" /></a>
                     <button id={`drive-trash-${item.id}`} type="button" data-testid="file-trash" className="icon-button h-11 w-11 hover:bg-red-50 hover:text-red-800 sm:h-10 sm:w-8" title={text.moveToTrash} aria-label={`${text.moveToTrash}: ${name}`} onClick={(event) => onTrash(item, event.currentTarget)}><TrashIcon aria-hidden="true" className="h-4 w-4" /></button>

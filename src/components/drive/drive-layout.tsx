@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftOnRectangleIcon, ArrowUpTrayIcon, Bars3Icon, FolderIcon, MagnifyingGlassIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftOnRectangleIcon, ArrowUpTrayIcon, Bars3Icon, FolderIcon, MagnifyingGlassIcon, PlusIcon, TrashIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { User } from '@/lib/api';
@@ -53,9 +53,12 @@ function DriveSearch({ search, onSearch }: SearchProps) {
   );
 }
 
+type Section = 'drive' | 'trash' | 'shared' | 'file';
+
 type Props = {
   user: User;
   homeHref?: string;
+  section?: Section;
   drive?: SearchProps & { folder: string; onUpload: (trigger: HTMLElement | null) => void };
   signingOut: boolean;
   signOutError: string | null;
@@ -63,17 +66,18 @@ type Props = {
   children: ReactNode;
 };
 
-function NavigationLinks({ active, homeHref, mobile = false, onNavigate }: { active: 'drive' | 'trash'; homeHref: string; mobile?: boolean; onNavigate?: () => void }) {
+function NavigationLinks({ active, homeHref, mobile = false, onNavigate }: { active: Section; homeHref: string; mobile?: boolean; onNavigate?: () => void }) {
   const { text } = useLocale();
   const links = [
-    { id: 'drive', href: homeHref, label: text.myDrive, Icon: FolderIcon },
-    { id: 'trash', href: '/trash', label: text.trash, Icon: TrashIcon },
+    { id: 'drive', href: homeHref, label: text.myDrive, Icon: FolderIcon, testId: undefined },
+    { id: 'shared', href: '/shared-with-me', label: text.sharedWithMe, Icon: UserGroupIcon, testId: mobile ? 'shared-nav-mobile' : 'shared-nav' },
+    { id: 'trash', href: '/trash', label: text.trash, Icon: TrashIcon, testId: mobile ? 'trash-nav-mobile' : 'trash-nav' },
   ];
 
-  return links.map(({ id, href, label, Icon }) => (
+  return links.map(({ id, href, label, Icon, testId }) => (
     <Link
       key={id} href={href} prefetch={false} onNavigate={onNavigate}
-      data-testid={id === 'trash' ? (mobile ? 'trash-nav-mobile' : 'trash-nav') : undefined}
+      data-testid={testId}
       aria-current={id === active ? 'page' : undefined}
       className={`flex min-h-11 items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium ${id === active ? 'bg-primary-100 text-primary-800' : 'text-gray-700 hover:bg-gray-100'}`}
     >
@@ -82,13 +86,12 @@ function NavigationLinks({ active, homeHref, mobile = false, onNavigate }: { act
   ));
 }
 
-export function DriveLayout({ user, drive, homeHref = '/drive', signingOut, signOutError, onSignOut, children }: Props) {
+export function DriveLayout({ user, drive, homeHref = '/drive', section = drive ? 'drive' : 'trash', signingOut, signOutError, onSignOut, children }: Props) {
   const { text } = useLocale();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const toggleNavigation = useRef<HTMLButtonElement>(null);
   const newMenu = useRef<HTMLDetailsElement>(null);
   const newTrigger = useRef<HTMLElement>(null);
-  const section = drive ? 'drive' : 'trash';
   const mainId = `${section}-main`;
 
   const initials = (user.name.trim().split(/\s+/).map((part) => part[0]).filter(Boolean).slice(0, 2).join('') || user.email[0] || '?').toUpperCase();
