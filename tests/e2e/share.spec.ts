@@ -1,15 +1,15 @@
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type APIRequestContext, type Locator, type Page, type TestInfo } from '@playwright/test'
+import { expect, type APIRequestContext, type Locator, type Page, type TestInfo } from '@playwright/test'
 import type { components } from '../../src/lib/api-schema'
+import { fixtureAccounts, fixturePassword, ownerTest as test } from './fixtures'
 
 const api = '/api/v1'
 const projects = '10000000-0000-4000-8000-000000000102'
-const ownerEmail = 'demo@example.test'
-const viewerEmail = 'viewer@example.test'
-const reviewerEmail = 'reviewer@example.test'
-const password = process.env.DEMO_PASSWORD ?? 'CloudDrive-Demo-2025!'
+const viewerEmail = fixtureAccounts.viewer
+const reviewerEmail = fixtureAccounts.reviewer
+const password = fixturePassword
 const vietnamOffsetMs = 7 * 60 * 60 * 1000
 
 type ShareGrant = components['schemas']['ShareGrant']
@@ -31,12 +31,6 @@ function apiResponse(page: Page, method: string, path: string) {
 
 function itemById(page: Page, testId: 'drive-item' | 'shared-item' | 'trash-item', id: string) {
   return page.getByTestId(testId).and(page.locator(`[data-item-id="${id}"]`))
-}
-
-async function loginAs(request: APIRequestContext, email: string) {
-  const response = await request.post(`${api}/auth/login`, { data: { email, password } })
-  expect(response.status()).toBe(200)
-  expect(await response.json()).toMatchObject({ success: true, data: { email } })
 }
 
 async function openShareDialog(page: Page, driveItem: Locator) {
@@ -82,21 +76,16 @@ async function verifyAccessibility(page: Page, testInfo: TestInfo, name: string)
   await testInfo.attach(name, { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' })
 }
 
-test('SHARE-01 grants file access by account, honors expiry, and clears access after revoke or Trash', async ({ page, browser, playwright, baseURL }, testInfo) => {
+test('SHARE-01 grants file access by account, honors expiry, and clears access after revoke or Trash', async ({ page, browser, baseURL, ownerRequest: owner, reviewerRequest: reviewer }, testInfo) => {
   test.setTimeout(75_000)
   const appOrigin = new URL(baseURL!).origin
-  const options = { baseURL, extraHTTPHeaders: { Origin: appOrigin } }
-  const owner = await playwright.request.newContext(options)
-  const reviewer = await playwright.request.newContext(options)
   const { viewport, deviceScaleFactor, isMobile, hasTouch, locale, timezoneId, userAgent } = testInfo.project.use
   const viewerContext = await browser.newContext({
     baseURL, viewport, deviceScaleFactor, isMobile, hasTouch, locale, timezoneId, userAgent, acceptDownloads: true,
+    storageState: { cookies: [], origins: [] },
   })
 
   try {
-    await loginAs(owner, ownerEmail)
-    await loginAs(reviewer, reviewerEmail)
-    await page.context().addCookies((await owner.storageState()).cookies)
     const suffix = randomUUID().slice(0, 8)
     const destination = `/drive?folder=${projects}&q=${suffix}`
     const originalName = `Tài liệu chia sẻ ${suffix}.txt`
@@ -258,6 +247,6 @@ test('SHARE-01 grants file access by account, honors expiry, and clears access a
       expect((await owner.delete(`${api}${filePath}/shares/${newGrant.recipientId}`)).status()).toBe(200)
     })
   } finally {
-    await Promise.all([viewerContext.close(), owner.dispose(), reviewer.dispose()])
+    await viewerContext.close()
   }
 })

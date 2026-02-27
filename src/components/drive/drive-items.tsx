@@ -1,8 +1,8 @@
 'use client';
 
-import { ArrowDownTrayIcon, DocumentIcon, DocumentTextIcon, FilmIcon, FolderIcon, MusicalNoteIcon, PencilSquareIcon, PhotoIcon, TableCellsIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ArrowRightIcon, DocumentIcon, DocumentTextIcon, FilmIcon, FolderIcon, MusicalNoteIcon, PencilSquareIcon, PhotoIcon, TableCellsIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { downloadUrl, type FileItem, type FolderItem } from '@/lib/api';
+import { downloadUrl, type FileItem, type FolderItem, type FolderSummary } from '@/lib/api';
 import { readableSize } from '@/lib/file-details';
 import { driveHref, type DriveView } from '@/lib/routes';
 import { useLocale } from '../providers';
@@ -17,12 +17,14 @@ function fileIcon(mimeType: string) {
 }
 
 type FileAction = (file: FileItem, trigger: HTMLElement) => void;
-type Props = { title: string; items: FolderItem[]; view: DriveView; onRename: FileAction; onTrash: FileAction; onShare: FileAction };
+type FolderAction = (folder: FolderSummary, trigger: HTMLElement) => void;
+type Props = { title: string; items: FolderItem[]; view: DriveView; onRename: FileAction; onTrash: FileAction; onShare: FileAction; onFolderRename: FolderAction; onFolderMove: FolderAction };
 
-export function DriveItems({ title, items, view, onRename, onTrash, onShare }: Props) {
+export function DriveItems({ title, items, view, onRename, onTrash, onShare, onFolderRename, onFolderMove }: Props) {
   const { locale, text } = useLocale();
   if (items.length === 0) return null;
   const grid = view === 'grid';
+  const actionsClass = `flex shrink-0 justify-end gap-1 ${grid ? 'rounded-b-lg border-t border-gray-100 bg-gray-50 px-2 py-1' : ''}`;
   const dateFormat = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'medium' });
 
   return (
@@ -55,13 +57,17 @@ export function DriveItems({ title, items, view, onRename, onTrash, onShare }: P
                     {details}
                   </Link>
                   {grid && <div className="border-t border-gray-100 px-3 pb-3">{updated}</div>}
+                  <div className={actionsClass}>
+                    <button type="button" data-testid="folder-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.rename} aria-label={`${text.rename}: ${name}`} onClick={(event) => onFolderRename(item, event.currentTarget)}><PencilSquareIcon aria-hidden="true" className="h-4 w-4" /></button>
+                    <button type="button" id={`folder-move-${item.id}`} data-testid="folder-move" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.move} aria-label={`${text.move}: ${name}`} onClick={(event) => onFolderMove(item, event.currentTarget)}><ArrowRightIcon aria-hidden="true" className="h-4 w-4" /></button>
+                  </div>
                 </>
               ) : (
                 <>
                   <div className={`min-w-0 flex-1 ${grid ? 'flex flex-col justify-between p-3' : 'px-1'}`}>
                     {details}{updated}
                   </div>
-                  <div className={`flex shrink-0 justify-end gap-1 ${grid ? 'rounded-b-lg border-t border-gray-100 bg-gray-50 px-2 py-1' : ''}`}>
+                  <div className={actionsClass}>
                     <button type="button" data-testid="file-share" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.share} aria-label={`${text.share}: ${name}`} onClick={(event) => onShare(item, event.currentTarget)}><UserPlusIcon aria-hidden="true" className="h-4 w-4" /></button>
                     <button type="button" data-testid="file-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.rename} aria-label={`${text.rename}: ${name}`} onClick={(event) => onRename(item, event.currentTarget)}><PencilSquareIcon className="h-4 w-4" /></button>
                     <a data-testid="file-download" href={downloadUrl(item.id)} download={name} className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.download} aria-label={`${text.download}: ${name}`}><ArrowDownTrayIcon className="h-4 w-4" /></a>

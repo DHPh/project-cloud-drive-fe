@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type APIRequestContext, type Page, type Response, type TestInfo } from '@playwright/test'
+import { expect, type Page, type Response, type TestInfo } from '@playwright/test'
+import { fixtureAccounts, fixturePassword, ownerTest as authenticatedTest, test } from './fixtures'
 
 const fixture = {
-  email: 'demo@example.test',
-  password: process.env.DEMO_PASSWORD ?? 'CloudDrive-Demo-2025!',
+  email: fixtureAccounts.owner,
+  password: fixturePassword,
   documents: '10000000-0000-4000-8000-000000000101',
   projects: '10000000-0000-4000-8000-000000000102',
   empty: '10000000-0000-4000-8000-000000000103',
@@ -13,27 +14,6 @@ const fixture = {
 }
 
 const api = '/api/v1'
-
-type SessionState = Awaited<ReturnType<APIRequestContext['storageState']>>
-
-// Authenticated scenarios share one real session per project worker so the matrix
-// can run with the normal authentication rate limit enabled.
-const authenticatedTest = test.extend<object, { sessionState: SessionState }>({
-  sessionState: [async ({ playwright }, use, workerInfo) => {
-    const baseURL = workerInfo.project.use.baseURL!
-    const request = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Origin: new URL(baseURL).origin } })
-    let state: SessionState
-    try {
-      const response = await request.post(`${api}/auth/login`, { data: { email: fixture.email, password: fixture.password } })
-      expect(response.status()).toBe(200)
-      state = await request.storageState()
-    } finally {
-      await request.dispose()
-    }
-    await use(state)
-  }, { scope: 'worker' }],
-  storageState: ({ sessionState }, provideStorageState) => provideStorageState(sessionState),
-})
 
 function driveUrl(folder?: string) {
   return folder ? `/drive?folder=${folder}` : '/drive'

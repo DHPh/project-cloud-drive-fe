@@ -58,6 +58,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a folder
+         * @description Creates a folder under a parent owned by the current account or in the root.
+         */
+        post: operations["createFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/folders/{folderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename or move a folder
+         * @description Only the owner can update the folder. Omitted fields keep their current values. A null parentId moves it to the root. The folder cannot move into itself or a descendant. File and folder IDs, object data and file sharing grants are preserved. An unchanged name and parent return the existing folder.
+         */
+        patch: operations["updateFolder"];
+        trace?: never;
+    };
     "/folders/{folderId}/contents": {
         parameters: {
             query?: never;
@@ -67,7 +107,7 @@ export interface paths {
         };
         /**
          * List direct children of a folder
-         * @description Use root for the signed-in user's root. Pagination applies to the combined file and folder list after filtering. Results sort by kind (folders first), then by display name without case sensitivity, then by ID in ascending order. A page past the last result returns an empty items array. Files in Trash are excluded from listing and search.
+         * @description Use root for the signed-in user's root. Pagination applies to the combined file and folder list after filtering. Results sort by kind (folders first), then by display name without case sensitivity, then by ID in ascending order. A page past the last result returns an empty items array. Files in Trash are excluded from listing and search. With type=folders, only folders count toward total or pagination.
          */
         get: operations["listFolderContents"];
         put?: never;
@@ -320,6 +360,28 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        /** @description Trimmed display name. Exact case-sensitive sibling names must be unique for the same owner, including in the root. */
+        FolderName: string;
+        CreateFolderRequest: {
+            name: components["schemas"]["FolderName"];
+            /**
+             * Format: uuid
+             * @description Parent folder ID. Null or omitted creates in the root.
+             */
+            parentId?: string | null;
+        };
+        UpdateFolderRequest: {
+            name?: components["schemas"]["FolderName"];
+            /**
+             * Format: uuid
+             * @description Parent folder ID. Null moves the folder to the root.
+             */
+            parentId?: string | null;
+        };
+        FolderResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["FolderSummary"];
+        };
         FileSummary: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -466,6 +528,16 @@ export interface components {
         };
     };
     responses: {
+        /** @description FOLDER_NAME_CONFLICT indicates an exact duplicate name in the destination. INVALID_FOLDER_MOVE indicates a move into the source folder or a descendant. */
+        FolderMutationConflict: {
+            headers: {
+                "Cache-Control": components["headers"]["PrivateCache"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
         /** @description Current Trash state of the file after the operation. */
         FileTrashState: {
             headers: {
@@ -792,11 +864,77 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
+    createFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description The new folder. */
+            201: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["FolderMutationConflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description The current folder after the update. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["FolderMutationConflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
     listFolderContents: {
         parameters: {
             query?: {
                 page?: components["parameters"]["Page"];
                 limit?: components["parameters"]["Limit"];
+                /** @description Return all eligible items or only folders before pagination. */
+                type?: "all" | "folders";
                 /** @description Case-insensitive display name substring for direct children in this folder. Leading and trailing whitespace is ignored. An empty value applies no filter. */
                 q?: string;
             };

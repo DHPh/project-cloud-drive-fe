@@ -1,33 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test as base, type APIRequestContext, type APIResponse, type Page, type TestInfo } from '@playwright/test'
+import { expect, type APIResponse, type Page, type TestInfo } from '@playwright/test'
+import { ownerTest as test } from './fixtures'
 
 const api = '/api/v1'
 const projects = '10000000-0000-4000-8000-000000000102'
-const password = process.env.DEMO_PASSWORD ?? 'CloudDrive-Demo-2025!'
-
-type Sessions = { owner: APIRequestContext; viewer: APIRequestContext }
-
-const test = base.extend<object, { sessions: Sessions }>({
-  sessions: [async ({ playwright }, provideSessions, workerInfo) => {
-    const baseURL = workerInfo.project.use.baseURL!
-    const options = { baseURL, extraHTTPHeaders: { Origin: new URL(baseURL).origin } }
-    const owner = await playwright.request.newContext(options)
-    const viewer = await playwright.request.newContext(options)
-    try {
-      for (const [request, email] of [[owner, 'demo@example.test'], [viewer, 'viewer@example.test']] as const) {
-        const login = await request.post(`${api}/auth/login`, { data: { email, password } })
-        expect(login.status()).toBe(200)
-        expect(await login.json()).toMatchObject({ success: true, data: { email } })
-      }
-      await provideSessions({ owner, viewer })
-    } finally {
-      await Promise.all([owner.dispose(), viewer.dispose()])
-    }
-  }, { scope: 'worker' }],
-  storageState: async ({ sessions }, provideState) => provideState(await sessions.owner.storageState()),
-})
 
 function apiResponse(page: Page, method: string, path: string) {
   return page.waitForResponse(response =>
@@ -65,7 +43,7 @@ async function verifyTrashAccessibility(page: Page, testInfo: TestInfo, screensh
   await testInfo.attach(screenshotName, { path, contentType: 'image/png' })
 }
 
-test('TRASH-01 moves and restores the same file without exposing it to another user', async ({ page, sessions }, testInfo) => {
+test('TRASH-01 moves and restores the same file without exposing it to another user', async ({ page, ownerRequest: owner, viewerRequest: viewer }, testInfo) => {
   const suffix = randomUUID().slice(0, 8)
   const driveUrl = `/drive?folder=${projects}&q=${suffix}`
   const originalName = `Bản nháp ${suffix}.txt`
@@ -114,24 +92,24 @@ test('TRASH-01 moves and restores the same file without exposing it to another u
   await expect(page).toHaveURL(url => `${url.pathname}${url.search}` === driveUrl)
   await expect(page.getByTestId('drive-empty-search')).toBeVisible()
   await expect(driveItem).toHaveCount(0)
-  const folder = await sessions.owner.get(`${api}/folders/${projects}/contents`)
+  const folder = await owner.get(`${api}/folders/${projects}/contents`)
   expect(folder.status()).toBe(200)
   const folderResult = await folder.json()
   expect(folderResult.data.items).not.toContainEqual(expect.objectContaining({ id: fileId }))
-  await expectNotFound(await sessions.owner.get(`${api}/files/${fileId}/download`))
-  await expectNotFound(await sessions.owner.patch(`${api}/files/${fileId}`, { data: { originalName: 'Could not rename.txt' } }))
+  await expectNotFound(await owner.get(`${api}/files/${fileId}/download`))
+  await expectNotFound(await owner.patch(`${api}/files/${fileId}`, { data: { originalName: 'Could not rename.txt' } }))
 
-  const repeatedMove = await sessions.owner.post(`${api}/files/${fileId}/trash`)
+  const repeatedMove = await owner.post(`${api}/files/${fileId}/trash`)
   expect(repeatedMove.status()).toBe(200)
   expect(await repeatedMove.json()).toEqual(trashResult)
-  const foreignList = await sessions.viewer.get(`${api}/trash`, { params: { page: 1, limit: 20 } })
+  const foreignList = await viewer.get(`${api}/trash`, { params: { page: 1, limit: 20 } })
   expect(foreignList.status()).toBe(200)
   expect((await foreignList.json()).data.items).not.toContainEqual(expect.objectContaining({ id: fileId }))
-  await expectNotFound(await sessions.viewer.post(`${api}/files/${fileId}/trash`))
-  await expectNotFound(await sessions.viewer.post(`${api}/files/${fileId}/restore`))
+  await expectNotFound(await viewer.post(`${api}/files/${fileId}/trash`))
+  await expectNotFound(await viewer.post(`${api}/files/${fileId}/restore`))
 
   await openTrashFromDrive(page)
-  const archive = await sessions.owner.get(`${api}/trash`, { params: { page: 1, limit: 20 } })
+  const archive = await owner.get(`${api}/trash`, { params: { page: 1, limit: 20 } })
   expect(archive.status()).toBe(200)
   expect(await archive.json()).toMatchObject({
     success: true,
@@ -160,7 +138,7 @@ test('TRASH-01 moves and restores the same file without exposing it to another u
     : page.locator('#trash-heading')
   await expect(nextFocus).toBeFocused()
 
-  const repeatedRestore = await sessions.owner.post(`${api}/files/${fileId}/restore`)
+  const repeatedRestore = await owner.post(`${api}/files/${fileId}/restore`)
   expect(repeatedRestore.status()).toBe(200)
   expect(await repeatedRestore.json()).toEqual({ success: true, data: { id: fileId, trashedAt: null } })
 
@@ -174,7 +152,7 @@ test('TRASH-01 moves and restores the same file without exposing it to another u
 })
 
 test.describe('empty Trash for the viewer fixture', () => {
-  test.use({ storageState: async ({ sessions }, provideState) => provideState(await sessions.viewer.storageState()) })
+  test.use({ storageState: async ({ viewerRequest }, provideState) => provideState(await viewerRequest.storageState()) })
 
   test('TRASH-01 shows loading and recovers from a transient list error', async ({ page }, testInfo) => {
     let releaseInitialRequest!: () => void

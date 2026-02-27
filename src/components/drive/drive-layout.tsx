@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftOnRectangleIcon, ArrowUpTrayIcon, Bars3Icon, FolderIcon, MagnifyingGlassIcon, PlusIcon, TrashIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftOnRectangleIcon, ArrowUpTrayIcon, Bars3Icon, FolderIcon, FolderPlusIcon, MagnifyingGlassIcon, PlusIcon, TrashIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { User } from '@/lib/api';
@@ -59,7 +59,7 @@ type Props = {
   user: User;
   homeHref?: string;
   section?: Section;
-  drive?: SearchProps & { folder: string; onUpload: (trigger: HTMLElement | null) => void };
+  drive?: SearchProps & { folder: string; onUpload: (trigger: HTMLElement | null) => void; onCreateFolder: (trigger: HTMLElement | null) => void };
   signingOut: boolean;
   signOutError: string | null;
   onSignOut: () => void;
@@ -96,9 +96,9 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
 
   const initials = (user.name.trim().split(/\s+/).map((part) => part[0]).filter(Boolean).slice(0, 2).join('') || user.email[0] || '?').toUpperCase();
 
-  function startUpload() {
+  function startDriveAction(action: 'onUpload' | 'onCreateFolder') {
     if (newMenu.current) newMenu.current.open = false;
-    drive?.onUpload(newTrigger.current);
+    drive?.[action](newTrigger.current);
   }
 
   return (
@@ -127,7 +127,8 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
               <PlusIcon aria-hidden="true" className="h-6 w-6" />{text.newItem}
             </summary>
             <div className="panel absolute left-0 z-30 mt-2 min-w-[11rem] p-1.5 lg:right-0">
-              <button type="button" data-testid="upload-open" className="button w-full justify-start text-gray-700 hover:bg-gray-100" onClick={startUpload}><ArrowUpTrayIcon className="h-5 w-5" />{text.upload}</button>
+              <button type="button" data-testid="folder-create-open" className="button min-h-11 w-full justify-start text-gray-700 hover:bg-gray-100" onClick={() => startDriveAction('onCreateFolder')}><FolderPlusIcon aria-hidden="true" className="h-5 w-5" />{text.createFolder}</button>
+              <button type="button" data-testid="upload-open" className="button min-h-11 w-full justify-start text-gray-700 hover:bg-gray-100" onClick={() => startDriveAction('onUpload')}><ArrowUpTrayIcon className="h-5 w-5" />{text.upload}</button>
             </div>
           </details>
         )}

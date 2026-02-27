@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
   title: Cloud Drive API
-  version: 0.3.0
+  version: 0.4.0
   description: >-
-    Browser API for sign-in, folder browsing, upload, file editing, download, file trash, and sharing.
+    Browser API for sign-in, folder management, upload, file editing, download, file trash, and sharing.
     State-changing browser requests require the configured application Origin.
 servers:
   - url: /api/v1
@@ -120,6 +120,85 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalError'
+  /folders:
+    post:
+      operationId: createFolder
+      tags: [Folders]
+      summary: Create a folder
+      description: Creates a folder under a parent owned by the current account or in the root.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFolderRequest'
+      responses:
+        '201':
+          description: The new folder.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/FolderMutationConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /folders/{folderId}:
+    patch:
+      operationId: updateFolder
+      tags: [Folders]
+      summary: Rename or move a folder
+      description: >-
+        Only the owner can update the folder. Omitted fields keep their current values.
+        A null parentId moves it to the root. The folder cannot move into itself or a
+        descendant. File and folder IDs, object data and file sharing grants are preserved.
+        An unchanged name and parent return the existing folder.
+      parameters:
+        - name: folderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFolderRequest'
+      responses:
+        '200':
+          description: The current folder after the update.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/FolderMutationConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /folders/{folderId}/contents:
     get:
       operationId: listFolderContents
@@ -131,10 +210,18 @@ paths:
         by display name without case sensitivity, then by ID in ascending order.
         A page past the last result returns an empty items array.
         Files in Trash are excluded from listing and search.
+        With type=folders, only folders count toward total or pagination.
       parameters:
         - $ref: '#/components/parameters/FolderId'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
+        - name: type
+          in: query
+          description: Return all eligible items or only folders before pagination.
+          schema:
+            type: string
+            enum: [all, folders]
+            default: all
         - name: q
           in: query
           description: >-
@@ -568,6 +655,17 @@ components:
         enum: ['private, no-store']
 
   responses:
+    FolderMutationConflict:
+      description: >-
+        FOLDER_NAME_CONFLICT indicates an exact duplicate name in the destination.
+        INVALID_FOLDER_MOVE indicates a move into the source folder or a descendant.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     FileTrashState:
       description: Current Trash state of the file after the operation.
       headers:
@@ -803,6 +901,45 @@ components:
         updatedAt:
           type: string
           format: date-time
+    FolderName:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: >-
+        Trimmed display name. Exact case-sensitive sibling names must be unique
+        for the same owner, including in the root.
+    CreateFolderRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          $ref: '#/components/schemas/FolderName'
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent folder ID. Null or omitted creates in the root.
+    UpdateFolderRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          $ref: '#/components/schemas/FolderName'
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent folder ID. Null moves the folder to the root.
+    FolderResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          $ref: '#/components/schemas/FolderSummary'
     FileSummary:
       type: object
       required: [kind, id, originalName, folderId, mimeType, size, description, tags, createdAt, updatedAt]

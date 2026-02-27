@@ -5,6 +5,7 @@ const apiBase = '/api/v1';
 export type User = components['schemas']['User'];
 export type FileItem = components['schemas']['FileSummary'];
 export type FolderItem = components['schemas']['FolderItem'];
+export type FolderSummary = components['schemas']['FolderSummary'];
 type ErrorPayload = components['schemas']['ErrorResponse'];
 type LoginRequest = operations['login']['requestBody']['content']['application/json'];
 type RenameRequest = operations['updateFile']['requestBody']['content']['application/json'];
@@ -12,6 +13,11 @@ type LoginResponse = operations['login']['responses'][200]['content']['applicati
 type SessionResponse = operations['getCurrentUser']['responses'][200]['content']['application/json'];
 type LogoutResponse = operations['logout']['responses'][200]['content']['application/json'];
 type FolderResponse = operations['listFolderContents']['responses'][200]['content']['application/json'];
+type FolderContentsType = NonNullable<operations['listFolderContents']['parameters']['query']>['type'];
+type CreateFolderRequest = operations['createFolder']['requestBody']['content']['application/json'];
+type UpdateFolderRequest = operations['updateFolder']['requestBody']['content']['application/json'];
+type CreateFolderResponse = operations['createFolder']['responses'][201]['content']['application/json'];
+type UpdateFolderResponse = operations['updateFolder']['responses'][200]['content']['application/json'];
 type FileResponse = operations['uploadFile']['responses'][201]['content']['application/json'];
 type RenameResponse = operations['updateFile']['responses'][200]['content']['application/json'];
 type TrashListResponse = operations['listTrash']['responses'][200]['content']['application/json'];
@@ -54,7 +60,7 @@ async function json<Response>(path: string, options?: RequestInit): Promise<Resp
   return (await request(path, options)).json();
 }
 
-function jsonOptions(method: 'POST' | 'PATCH', body: LoginRequest | RenameRequest, signal?: AbortSignal): RequestInit {
+function jsonOptions(method: 'POST' | 'PATCH', body: LoginRequest | RenameRequest | CreateFolderRequest | UpdateFolderRequest, signal?: AbortSignal): RequestInit {
   return { method, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' }, signal };
 }
 
@@ -70,10 +76,19 @@ export async function logout() {
   await json<LogoutResponse>('/auth/logout', { method: 'POST' });
 }
 
-export function listFolder(folder: string, search: string, page: number, signal: AbortSignal) {
+export function listFolder(folder: string, search: string, page: number, signal: AbortSignal, type?: FolderContentsType) {
   const query = new URLSearchParams({ page: String(page) });
   if (search) query.set('q', search);
+  if (type) query.set('type', type);
   return json<FolderResponse>(`/folders/${encodeURIComponent(folder)}/contents?${query}`, { signal });
+}
+
+export async function createFolder(data: CreateFolderRequest, signal: AbortSignal) {
+  return (await json<CreateFolderResponse>('/folders', jsonOptions('POST', data, signal))).data;
+}
+
+export async function updateFolder(folderId: string, changes: UpdateFolderRequest, signal: AbortSignal) {
+  return (await json<UpdateFolderResponse>(`/folders/${encodeURIComponent(folderId)}`, jsonOptions('PATCH', changes, signal))).data;
 }
 
 export async function renameFile(fileId: string, originalName: string, signal: AbortSignal) {

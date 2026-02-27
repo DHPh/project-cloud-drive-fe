@@ -1,6 +1,6 @@
 # Thiết kế UX frontend
 
-Phạm vi áp dụng gồm DRIVE-01, TRASH-01 và SHARE-01. Màn hình mới tiếp nối bố cục, theme, icon, breadcrumb và chế độ lưới/danh sách của Drive Nuxt. Đối chiếu desktop và mobile trên bản chạy với dữ liệu tổng hợp.
+Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, TRASH-01 và SHARE-01. Màn hình mới tiếp nối bố cục, theme, icon, breadcrumb và chế độ lưới/danh sách của Drive Nuxt. Đối chiếu desktop và mobile trên bản chạy với dữ liệu tổng hợp.
 
 ## Drive
 
@@ -10,6 +10,13 @@ Phạm vi áp dụng gồm DRIVE-01, TRASH-01 và SHARE-01. Màn hình mới ti�
 4. **Trạng thái và upload.** Kiểm tra loading, thư mục trống, lọc rỗng, lỗi có retry và tên dài. Khi tải lại danh sách, giữ bố cục ổn định. Upload cho chọn lại cùng tệp và giữ từng tệp thất bại để retry. Với tệp chưa rõ kết quả do mất kết nối, hướng dẫn làm mới danh sách và kiểm tra trước khi gửi lại. Dùng số byte đã gửi khi hiện phần trăm tiến độ. Giữ nội dung đang nhập khi request lỗi hoặc người dùng đăng nhập lại trong cùng phiên thao tác. Bất kỳ nháp lưu qua reload nào cũng phải giới hạn theo tài khoản và form. Mật khẩu, token và nội dung tệp nằm ngoài bộ lưu nháp.
 5. **Viewport và truy cập.** Kiểm tra `1280×720` với Windows scaling 125% và `390×844` ở mobile. Dialog hỗ trợ bàn phím, focus trả về nút mở, và thông báo có thể đọc bởi công nghệ hỗ trợ. Tìm kiếm tôn trọng IME tiếng Việt. Kiểm tra nội dung cắt cụt và vùng cuộn trên mobile.
 6. **Quay lại và đăng xuất.** Khi đóng dialog, reset trạng thái gửi và lỗi của dialog. Khi đăng xuất hoặc đổi tài khoản, hủy request đang chạy, xóa dữ liệu cache theo phiên và nháp liên quan, và cập nhật các tab còn mở.
+
+## Quản lý thư mục
+
+1. **Điểm vào.** **Mới → Tạo thư mục** tạo tại vị trí Drive đang mở. Hàng và thẻ thư mục có **Đổi tên** và **Di chuyển**. Link mở thư mục dùng ID nên giữ nguyên khi thư mục đổi tên hoặc đổi cha.
+2. **Chọn đích và quyền.** Hộp thoại di chuyển bắt đầu ở Drive gốc, dùng breadcrumb và danh sách chỉ gồm thư mục có phân trang. Lựa chọn đích và số trang thuộc hộp thoại. Thư mục nguồn và đường vào các thư mục con của nguồn không xuất hiện trong bộ chọn. **Chuyển tới đây** chỉ khả dụng khi đích đã tải và khác thư mục cha hiện tại. Backend kiểm tra quyền, tên trùng và vòng lặp.
+3. **Lỗi và kết quả.** Giữ tên hoặc đích đang chọn khi lỗi. Phân biệt đang tải đích, không có thư mục con, lỗi truy vấn có thể thử lại và lỗi lưu. Khi thành công, làm mới danh sách và breadcrumb thuộc tài khoản hiện tại. Giữ URL Drive và hiển thị link mở đích sau khi di chuyển.
+4. **Bàn phím và mobile.** Tạo/đổi tên đưa focus vào trường tên. Duyệt đích trong hộp thoại đưa focus đến tiêu đề đích. Khi hủy hoặc lưu tên, trả focus về nút mở nếu còn hiển thị. Sau khi di chuyển, focus về thao tác thư mục kế cận hoặc nội dung chính. Kiểm tra thao tác với bàn phím, tên dài, vùng bấm và phân trang desktop/mobile.
 
 ## Thùng rác
 
