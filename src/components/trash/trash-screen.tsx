@@ -64,6 +64,7 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
     setRestoring(fileId);
     setRestoreError(null);
     setNotice('');
+    const originalFolderId = items.find((item) => item.id === fileId)?.folderId;
     try {
       const result = await restoreFile(fileId, controller.signal);
       if (controller.signal.aborted) return;
@@ -83,7 +84,7 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
       void queryClient.invalidateQueries({ queryKey: ['drive', user.id] });
       void queryClient.invalidateQueries({ queryKey: ['file', user.id, fileId] });
       void queryClient.invalidateQueries({ queryKey: ['file-shares', user.id, fileId] });
-      setNotice(text.fileRestored);
+      setNotice(originalFolderId && result.folderId === null ? text.fileRestoredToRoot : text.fileRestored);
     } catch (failure) {
       if (!controller.signal.aborted) {
         if (failure instanceof ApiError && failure.status === 401) expire();

@@ -1,6 +1,6 @@
 # Thiết kế UX frontend
 
-Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, TRASH-01 và SHARE-01. Màn hình mới tiếp nối bố cục, theme, icon, breadcrumb và chế độ lưới/danh sách của Drive Nuxt. Đối chiếu desktop và mobile trên bản chạy với dữ liệu tổng hợp.
+Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, TRASH-01, SHARE-01 và SHARE-02. Màn hình mới tiếp nối bố cục, theme, icon, breadcrumb và chế độ lưới/danh sách của Drive Nuxt. Đối chiếu desktop và mobile trên bản chạy với dữ liệu tổng hợp.
 
 ## Drive
 
@@ -21,7 +21,7 @@ Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, TRASH-01 và SHARE-01. Màn hình
 ## Thùng rác
 
 1. **Điểm vào và quyền.** Chủ sở hữu có thể đưa một tệp vào Thùng rác từ lưới hoặc danh sách Drive. Hộp thoại xác nhận hiển thị tên tệp và cho biết có thể khôi phục. Mục Thùng rác nằm ở thanh điều hướng desktop và menu mobile. `/trash` hỗ trợ mở trực tiếp và giữ đích đến qua đăng nhập.
-2. **Danh sách và thao tác.** Trang Thùng rác hiển thị tên tệp, kích thước, thời điểm đưa vào thùng rác và nút Khôi phục. Số trang nằm trên URL và dữ liệu truy vấn gắn với tài khoản. Khôi phục thành công đưa tệp về thư mục cũ theo API. Cả hai thao tác làm mới những truy vấn Drive và Thùng rác liên quan. Màn hình chỉ đưa vào thùng rác hoặc khôi phục từng tệp.
+2. **Danh sách và thao tác.** Trang Thùng rác hiển thị tên tệp, kích thước, thời điểm đưa vào thùng rác và nút Khôi phục. Số trang nằm trên URL và dữ liệu truy vấn gắn với tài khoản. Dùng vị trí do API trả về và thông báo khi tệp phải về Drive gốc để giữ riêng tư. Cả hai thao tác làm mới những truy vấn Drive và Thùng rác liên quan. Màn hình chỉ đưa vào thùng rác hoặc khôi phục từng tệp.
 3. **Phản hồi và phục hồi.** Tách trạng thái tải lần đầu, trống và lỗi có thể thử lại. Trong lúc gửi, khóa thao tác lặp. Nếu lỗi, giữ tệp cùng hành động để người dùng thử lại. Khi trang hiện tại không còn tệp sau khôi phục, chuyển đến trang còn dữ liệu gần nhất hoặc về trang đầu.
 4. **Bàn phím và mobile.** Xác nhận mở với focus ở Hủy. Sau khi tệp rời danh sách, đưa focus đến nút thao tác của tệp kế cận, hoặc tiêu đề/nội dung chính khi không còn nút phù hợp. Thông báo kết quả qua vùng trạng thái có thể đọc bằng công nghệ hỗ trợ. Kiểm tra vùng bấm, tên tệp dài và phân trang tại cả hai viewport.
 
@@ -31,6 +31,12 @@ Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, TRASH-01 và SHARE-01. Màn hình
 2. **Thời hạn và thao tác.** Nhập hạn cho từng người nhận theo giờ Việt Nam. Với quyền mới hoặc quyền đã hết hạn, để trống dùng một tháng lịch tính từ lúc cấp. Quyền đang hiệu lực giữ hạn khi gửi lại không kèm hạn. Sau khi cấp hoặc sửa hạn, hiển thị giờ hiệu lực do API trả về. Thu hồi yêu cầu xác nhận ngay trong hộp thoại. Khi đưa tệp vào Thùng rác, cảnh báo các quyền cũ sẽ bị thu hồi.
 3. **Dữ liệu và phản hồi.** Danh sách người nhận gắn với tài khoản, tệp và trang đang xem trong hộp thoại. Số trang của `/shared-with-me` nằm trên URL. Giữ nội dung đang nhập nếu gửi lỗi, khóa thao tác lặp và làm mới danh sách khi API xác nhận thay đổi. Hiển thị riêng trạng thái tải, trống, lỗi có thể thử lại và tệp không truy cập được. Nếu trình duyệt không sao chép được link, giữ link có thể chọn bằng tay.
 4. **Bàn phím và mobile.** Focus vào email khi mở và trở về nút Chia sẻ khi đóng. Chỉnh thời hạn đưa focus đến ô ngày giờ. Xác nhận thu hồi bắt đầu ở Hủy và trả focus về thao tác phù hợp hoặc trường email sau khi dòng biến mất. Kiểm tra tên tệp dài, vùng bấm, trường ngày giờ và hành vi trên `1280×720` và `390×844`.
+
+## Chia sẻ thư mục
+
+1. **Điểm vào và URL.** Chủ thư mục mở **Chia sẻ** trên hàng hoặc thẻ thư mục. Hộp thoại dùng cùng quy tắc hạn và bàn phím với chia sẻ tệp, sao chép link `/drive?folder={id}`. **Được chia sẻ với tôi** có hai tab điều hướng **Tệp** và **Thư mục**. Tab và trang hiện tại được giữ trong URL, kể cả khi đăng nhập từ link.
+2. **Quyền xem.** Dùng quyền `owner` hoặc `viewer` từ API. Khi là người xem, hiển thị trạng thái **Chỉ xem**, breadcrumb bắt đầu ở mục cao nhất được phép và mọi thao tác ghi được ẩn. Người nhận có thể mở thư mục con, xem thông tin tệp và tải xuống trong phạm vi được phép. Hai tab liệt kê các mục chia sẻ trực tiếp.
+3. **Di chuyển và khôi phục.** Chủ tệp dùng bộ chọn đích có phân trang để di chuyển từng tệp. Nội dung đi theo quyền qua thư mục ở vị trí mới. Sau khi di chuyển, giữ danh sách nguồn, trả focus về thao tác kế cận hoặc nội dung chính và hiển thị link mở đích. Khi khôi phục về Drive gốc vì vị trí gốc đang chia sẻ, thông báo rõ để chủ tệp biết nơi tìm tệp.
 
 ## Phạm vi PWA
 

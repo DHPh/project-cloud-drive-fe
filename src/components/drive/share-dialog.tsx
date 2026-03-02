@@ -3,7 +3,7 @@
 import { ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { ApiError, grantFileShare, listFileShares, revokeFileShare, type FileItem, type ShareGrant } from '@/lib/api';
+import { ApiError, grantItemShare, listItemShares, revokeItemShare, type FolderItem, type ShareGrant } from '@/lib/api';
 import { localizedError } from '@/lib/messages';
 import { expiryFromVietnamInput, expiryToVietnamInput, shareDateFormat } from '@/lib/share-expiry';
 import { Overlay } from '../overlay';
@@ -11,8 +11,8 @@ import { useLocale } from '../providers';
 import { useShareExpiryRefresh } from '../use-share-expiry-refresh';
 
 type Props = {
-  file: FileItem;
-  fileLink: string;
+  item: FolderItem;
+  itemLink: string;
   userId: string;
   trigger: HTMLElement;
   suspended: boolean;
@@ -20,7 +20,7 @@ type Props = {
   onExpired: () => void;
 };
 
-export function ShareDialog({ file, fileLink, userId, trigger, suspended, onDismiss, onExpired }: Props) {
+export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDismiss, onExpired }: Props) {
   const { text, locale } = useLocale();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -42,10 +42,12 @@ export function ShareDialog({ file, fileLink, userId, trigger, suspended, onDism
   const expiryBeforeEdit = editing?.isActive ? expiryToVietnamInput(editing.expiresAt) : '';
   const dirty = editing ? expiry !== expiryBeforeEdit : Boolean(email.trim() || expiry);
   const dateFormat = shareDateFormat(locale);
-  const listKey = ['file-shares', userId, file.id] as const;
+  const folder = item.kind === 'folder';
+  const itemName = item.kind === 'folder' ? item.name : item.originalName;
+  const listKey = [folder ? 'folder-shares' : 'file-shares', userId, item.id] as const;
   const query = useQuery({
     queryKey: [...listKey, page],
-    queryFn: ({ signal }) => listFileShares(file.id, page, signal),
+    queryFn: ({ signal }) => listItemShares(item, page, signal),
     enabled: !suspended,
     refetchOnMount: 'always',
     refetchOnWindowFocus: 'always',
@@ -104,7 +106,7 @@ export function ShareDialog({ file, fileLink, userId, trigger, suspended, onDism
     setSaveError(null);
     setNotice('');
     try {
-      const result = await grantFileShare(file.id, { email: email.trim(), expiresAt: explicitExpiry }, controller.signal);
+      const result = await grantItemShare(item, { email: email.trim(), expiresAt: explicitExpiry }, controller.signal);
       if (controller.signal.aborted) return;
       resetForm();
       if (!editing?.isActive) setPage(1);
@@ -141,7 +143,7 @@ export function ShareDialog({ file, fileLink, userId, trigger, suspended, onDism
     setRevokeError(null);
     setNotice('');
     try {
-      await revokeFileShare(file.id, recipientId, controller.signal);
+      await revokeItemShare(item, recipientId, controller.signal);
       if (controller.signal.aborted) return;
       if (editing?.recipientId === recipientId) resetForm();
       setRevoke(null);
@@ -165,7 +167,7 @@ export function ShareDialog({ file, fileLink, userId, trigger, suspended, onDism
 
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(fileLink);
+      await navigator.clipboard.writeText(itemLink);
       setNotice(text.shareCopied);
     } catch {
       linkInput.current?.focus();
@@ -176,16 +178,16 @@ export function ShareDialog({ file, fileLink, userId, trigger, suspended, onDism
 
   return (
     <Overlay
-      open={!suspended} testId="share-dialog" title={text.shareTitle} description={text.shareDescription}
+      open={!suspended} testId="share-dialog" title={folder ? text.shareFolderTitle : text.shareTitle} description={folder ? text.shareFolderDescription : text.shareDescription}
       initialFocus={emailInput} onDismiss={pending ? undefined : dismiss} restoreFocus={trigger}
       restoreFallback={() => document.getElementById('drive-main')?.focus()}
     >
       <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
-        <p className="break-words text-sm font-semibold" title={file.originalName}>{file.originalName}</p>
+        <p className="break-words text-sm font-semibold" title={itemName}>{itemName}</p>
         <div>
-          <label htmlFor="share-link" className="mb-1 block text-sm font-medium">{text.shareLink}</label>
+          <label htmlFor="share-link" className="mb-1 block text-sm font-medium">{folder ? text.shareFolderLink : text.shareLink}</label>
           <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-            <input ref={linkInput} id="share-link" data-testid="share-link" className="field min-w-0 flex-1" value={fileLink} readOnly />
+            <input ref={linkInput} id="share-link" data-testid="share-link" className="field min-w-0 flex-1" value={itemLink} readOnly />
             <button type="button" data-testid="share-copy" className="button button-secondary min-h-11" onClick={() => void copyLink()}>
               <ClipboardDocumentIcon aria-hidden="true" className="h-4 w-4" />{text.shareCopy}
             </button>

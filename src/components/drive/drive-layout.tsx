@@ -59,7 +59,7 @@ type Props = {
   user: User;
   homeHref?: string;
   section?: Section;
-  drive?: SearchProps & { folder: string; onUpload: (trigger: HTMLElement | null) => void; onCreateFolder: (trigger: HTMLElement | null) => void };
+  drive?: SearchProps & { folder: string; onUpload?: (trigger: HTMLElement | null) => void; onCreateFolder?: (trigger: HTMLElement | null) => void };
   signingOut: boolean;
   signOutError: string | null;
   onSignOut: () => void;
@@ -93,12 +93,13 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
   const newMenu = useRef<HTMLDetailsElement>(null);
   const newTrigger = useRef<HTMLElement>(null);
   const mainId = `${section}-main`;
+  const showDriveActions = Boolean(drive?.onCreateFolder && drive?.onUpload);
 
   const initials = (user.name.trim().split(/\s+/).map((part) => part[0]).filter(Boolean).slice(0, 2).join('') || user.email[0] || '?').toUpperCase();
 
   function startDriveAction(action: 'onUpload' | 'onCreateFolder') {
     if (newMenu.current) newMenu.current.open = false;
-    drive?.[action](newTrigger.current);
+    drive?.[action]?.(newTrigger.current);
   }
 
   return (
@@ -118,8 +119,8 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
           <ArrowLeftOnRectangleIcon className="h-5 w-5" />
         </button>
       </header>
-      <aside className={`min-w-0 bg-white px-4 pt-3 lg:bg-transparent lg:px-3 lg:pt-4 ${drive ? '' : 'hidden lg:block'}`}>
-        {drive && (
+      <aside className={`min-w-0 bg-white px-4 pt-3 lg:bg-transparent lg:px-3 lg:pt-4 ${showDriveActions ? '' : 'hidden lg:block'}`}>
+        {showDriveActions && (
           <details ref={newMenu} className="group relative inline-block min-w-32 lg:mb-5 lg:block" onKeyDown={(event) => {
             if (event.key === 'Escape' && newMenu.current?.open) { newMenu.current.open = false; newTrigger.current?.focus(); }
           }}>

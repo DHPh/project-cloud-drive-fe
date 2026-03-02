@@ -4,7 +4,7 @@ import { ArrowDownTrayIcon, ArrowRightIcon, DocumentIcon, DocumentTextIcon, Film
 import Link from 'next/link';
 import { downloadUrl, type FileItem, type FolderItem, type FolderSummary } from '@/lib/api';
 import { readableSize } from '@/lib/file-details';
-import { driveHref, type DriveView } from '@/lib/routes';
+import { driveHref, fileHref, type DriveView } from '@/lib/routes';
 import { useLocale } from '../providers';
 
 function fileIcon(mimeType: string) {
@@ -18,9 +18,10 @@ function fileIcon(mimeType: string) {
 
 type FileAction = (file: FileItem, trigger: HTMLElement) => void;
 type FolderAction = (folder: FolderSummary, trigger: HTMLElement) => void;
-type Props = { title: string; items: FolderItem[]; view: DriveView; onRename: FileAction; onTrash: FileAction; onShare: FileAction; onFolderRename: FolderAction; onFolderMove: FolderAction };
+type ItemAction = (item: FolderItem, trigger: HTMLElement) => void;
+type Props = { title: string; items: FolderItem[]; view: DriveView; canManage: boolean; onRename: FileAction; onTrash: FileAction; onShare: ItemAction; onFolderRename: FolderAction; onMove: ItemAction };
 
-export function DriveItems({ title, items, view, onRename, onTrash, onShare, onFolderRename, onFolderMove }: Props) {
+export function DriveItems({ title, items, view, canManage, onRename, onTrash, onShare, onFolderRename, onMove }: Props) {
   const { locale, text } = useLocale();
   if (items.length === 0) return null;
   const grid = view === 'grid';
@@ -34,13 +35,17 @@ export function DriveItems({ title, items, view, onRename, onTrash, onShare, onF
         {items.map((item) => {
           const icon = item.kind === 'folder' ? { Icon: FolderIcon, classes: 'bg-amber-50 text-amber-700' } : fileIcon(item.mimeType);
           const name = item.kind === 'folder' ? item.name : item.originalName;
+          const nameClass = `text-sm font-medium ${grid ? 'line-clamp-2 break-words' : 'block truncate'}`;
+          const listClass = item.kind === 'file' && canManage ? 'flex-col gap-2 p-2 sm:flex-row sm:items-center hover:bg-gray-50' : 'items-center gap-2 p-2 hover:bg-gray-50';
           const details = (
             <div className={grid ? 'flex min-w-0 items-start gap-2.5' : 'flex min-w-0 flex-1 items-center gap-2.5'}>
               <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md sm:h-10 sm:w-10 ${icon.classes}`}>
                 <icon.Icon aria-hidden="true" className="h-6 w-6" />
               </span>
               <div className="min-w-0">
-                <span className={`text-sm font-medium ${grid ? 'line-clamp-2 break-words' : 'block truncate'}`} title={name}>{name}</span>
+                {item.kind === 'file' && !canManage
+                  ? <Link data-testid="drive-file-link" href={fileHref(item.id)} prefetch={false} className={`${nameClass} rounded-sm text-primary-800 hover:underline`} title={name}>{name}</Link>
+                  : <span className={nameClass} title={name}>{name}</span>}
                 {item.kind === 'file' && <span className="block text-xs tabular-nums text-gray-600">{readableSize(item.size, locale)}</span>}
               </div>
             </div>
@@ -50,17 +55,20 @@ export function DriveItems({ title, items, view, onRename, onTrash, onShare, onF
           );
 
           return (
-            <li key={item.id} data-testid="drive-item" data-kind={item.kind} data-item-id={item.id} className={`panel flex min-w-0 rounded-lg transition-colors hover:border-primary-400 ${grid ? 'min-h-[172px] flex-col hover:shadow-md' : 'items-center gap-2 p-2 hover:bg-gray-50'}`}>
+            <li key={item.id} data-testid="drive-item" data-kind={item.kind} data-item-id={item.id} className={`panel flex min-w-0 rounded-lg transition-colors hover:border-primary-400 ${grid ? 'min-h-[172px] flex-col hover:shadow-md' : listClass}`}>
               {item.kind === 'folder' ? (
                 <>
                   <Link href={driveHref(item.id, '', 1, view)} prefetch={false} className={`min-w-0 rounded-md hover:text-primary-800 ${grid ? 'flex flex-1 flex-col px-3 pt-3' : 'flex min-h-10 flex-1 items-center px-1'}`}>
                     {details}
                   </Link>
                   {grid && <div className="border-t border-gray-100 px-3 pb-3">{updated}</div>}
-                  <div className={actionsClass}>
-                    <button type="button" data-testid="folder-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.rename} aria-label={`${text.rename}: ${name}`} onClick={(event) => onFolderRename(item, event.currentTarget)}><PencilSquareIcon aria-hidden="true" className="h-4 w-4" /></button>
-                    <button type="button" id={`folder-move-${item.id}`} data-testid="folder-move" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.move} aria-label={`${text.move}: ${name}`} onClick={(event) => onFolderMove(item, event.currentTarget)}><ArrowRightIcon aria-hidden="true" className="h-4 w-4" /></button>
-                  </div>
+                  {canManage && (
+                    <div className={actionsClass}>
+                      <button type="button" data-testid="folder-share" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.share} aria-label={`${text.share}: ${name}`} onClick={(event) => onShare(item, event.currentTarget)}><UserPlusIcon aria-hidden="true" className="h-4 w-4" /></button>
+                      <button type="button" data-testid="folder-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.rename} aria-label={`${text.rename}: ${name}`} onClick={(event) => onFolderRename(item, event.currentTarget)}><PencilSquareIcon aria-hidden="true" className="h-4 w-4" /></button>
+                      <button type="button" id={`folder-move-${item.id}`} data-testid="folder-move" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.move} aria-label={`${text.move}: ${name}`} onClick={(event) => onMove(item, event.currentTarget)}><ArrowRightIcon aria-hidden="true" className="h-4 w-4" /></button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -68,10 +76,15 @@ export function DriveItems({ title, items, view, onRename, onTrash, onShare, onF
                     {details}{updated}
                   </div>
                   <div className={actionsClass}>
-                    <button type="button" data-testid="file-share" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.share} aria-label={`${text.share}: ${name}`} onClick={(event) => onShare(item, event.currentTarget)}><UserPlusIcon aria-hidden="true" className="h-4 w-4" /></button>
-                    <button type="button" data-testid="file-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.rename} aria-label={`${text.rename}: ${name}`} onClick={(event) => onRename(item, event.currentTarget)}><PencilSquareIcon className="h-4 w-4" /></button>
+                    {canManage && (
+                      <>
+                        <button type="button" data-testid="file-share" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.share} aria-label={`${text.share}: ${name}`} onClick={(event) => onShare(item, event.currentTarget)}><UserPlusIcon aria-hidden="true" className="h-4 w-4" /></button>
+                        <button type="button" data-testid="file-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.rename} aria-label={`${text.rename}: ${name}`} onClick={(event) => onRename(item, event.currentTarget)}><PencilSquareIcon aria-hidden="true" className="h-4 w-4" /></button>
+                        <button type="button" id={`file-move-${item.id}`} data-testid="file-move" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.move} aria-label={`${text.move}: ${name}`} onClick={(event) => onMove(item, event.currentTarget)}><ArrowRightIcon aria-hidden="true" className="h-4 w-4" /></button>
+                      </>
+                    )}
                     <a data-testid="file-download" href={downloadUrl(item.id)} download={name} className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.download} aria-label={`${text.download}: ${name}`}><ArrowDownTrayIcon className="h-4 w-4" /></a>
-                    <button id={`drive-trash-${item.id}`} type="button" data-testid="file-trash" className="icon-button h-11 w-11 hover:bg-red-50 hover:text-red-800 sm:h-10 sm:w-8" title={text.moveToTrash} aria-label={`${text.moveToTrash}: ${name}`} onClick={(event) => onTrash(item, event.currentTarget)}><TrashIcon aria-hidden="true" className="h-4 w-4" /></button>
+                    {canManage && <button id={`drive-trash-${item.id}`} type="button" data-testid="file-trash" className="icon-button h-11 w-11 hover:bg-red-50 hover:text-red-800 sm:h-10 sm:w-8" title={text.moveToTrash} aria-label={`${text.moveToTrash}: ${name}`} onClick={(event) => onTrash(item, event.currentTarget)}><TrashIcon aria-hidden="true" className="h-4 w-4" /></button>}
                   </div>
                 </>
               )}

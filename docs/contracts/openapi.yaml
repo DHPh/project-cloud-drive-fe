@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
   title: Cloud Drive API
-  version: 0.4.0
+  version: 0.5.0
   description: >-
-    Browser API for sign-in, folder management, upload, file editing, download, file trash, and sharing.
+    Browser API for sign-in, folder management, upload, file editing, download, file trash, and file and folder sharing.
     State-changing browser requests require the configured application Origin.
 servers:
   - url: /api/v1
@@ -211,6 +211,8 @@ paths:
         A page past the last result returns an empty items array.
         Files in Trash are excluded from listing and search.
         With type=folders, only folders count toward total or pagination.
+        A recipient can list a folder with an active share on it or an ancestor.
+        Recipient breadcrumbs are limited to folders that account may view.
       parameters:
         - $ref: '#/components/parameters/FolderId'
         - $ref: '#/components/parameters/Page'
@@ -304,7 +306,7 @@ paths:
       operationId: getFile
       tags: [Files, Sharing]
       summary: Read file information
-      description: The owner or a recipient with an unexpired grant can read a ready, active file.
+      description: The owner or a recipient with an unexpired direct or inherited grant can read a ready, active file.
       parameters:
         - $ref: '#/components/parameters/FileId'
       responses:
@@ -328,10 +330,12 @@ paths:
     patch:
       operationId: updateFile
       tags: [Files]
-      summary: Edit file name, description, or tags
+      summary: Edit file metadata or move it to a folder
       description: >-
         At least one field is required. Omitted fields keep their current values.
         Set description to null or tags to an empty array to clear them.
+        An owner can change folderId to an owned folder or null for their root.
+        Moving keeps file ID, object, quota and direct grants. Inherited access follows the new location.
         Files in Trash return 404.
       parameters:
         - $ref: '#/components/parameters/FileId'
@@ -366,7 +370,7 @@ paths:
       operationId: downloadFile
       tags: [Files]
       summary: Download the file as an attachment
-      description: The owner or a recipient with an unexpired grant can download the active file. Files in Trash return 404.
+      description: The owner or a recipient with an unexpired direct or inherited grant can download the active file. Files in Trash return 404.
       parameters:
         - $ref: '#/components/parameters/FileId'
       responses:
@@ -426,11 +430,12 @@ paths:
     post:
       operationId: restoreFile
       tags: [Trash]
-      summary: Restore a file to its original location
+      summary: Restore a file to a private location
       description: >-
-        The owner can restore a ready file to its original folder or root.
+        The owner restores an active file to its original location when that location is private.
+        If its original folder or an ancestor has an unexpired grant, it restores to the owner's root.
         Repeating the request on an active file returns the same active state.
-        File ID, folder, object, and storage usage are preserved.
+        File ID, object and storage usage are preserved. The response includes the resulting folderId.
         Restoring a file does not restore sharing grants.
       parameters:
         - $ref: '#/components/parameters/FileId'
@@ -582,7 +587,7 @@ paths:
       tags: [Sharing]
       summary: List files shared with the signed-in account
       description: >-
-        Includes ready, active files with unexpired grants. Sorts by latest sharedAt,
+        Includes ready, active files with unexpired direct file grants. Sorts by latest sharedAt,
         then file ID. A page past the last result returns an empty items array.
       parameters:
         - $ref: '#/components/parameters/Page'
@@ -597,6 +602,150 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFilesResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /folders/{folderId}/shares:
+    get:
+      operationId: listFolderShares
+      tags: [Folders, Sharing]
+      summary: List sharing grants of a folder owned by the signed-in account
+      description: Includes expired grants. Sorts by latest grantedAt, then recipient ID.
+      parameters:
+        - name: folderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of direct sharing grants for the folder.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileSharesResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      operationId: grantFolderShare
+      tags: [Folders, Sharing]
+      summary: Grant or update read and download access to a folder and its descendants
+      description: >-
+        The folder owner grants access to an existing account by email. A blank expiry
+        on a new grant defaults to one calendar month in Vietnam time. A repeated request
+        with a blank expiry preserves an active grant's expiration. An unknown recipient
+        email returns 404 with code RECIPIENT_NOT_FOUND.
+      parameters:
+        - name: folderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantFileShareRequest'
+      responses:
+        '200':
+          description: The current folder grant and its effective expiration.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileShareResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /folders/{folderId}/shares/{recipientId}:
+    delete:
+      operationId: revokeFolderShare
+      tags: [Folders, Sharing]
+      summary: Revoke a recipient's direct grant on the folder
+      description: >-
+        Only the folder owner may revoke. This removes the access inherited from this grant.
+        Repeating revocation returns the same result.
+      parameters:
+        - name: folderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: recipientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The grant has been revoked.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeFileShareResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /shared-folders:
+    get:
+      operationId: listSharedFolders
+      tags: [Folders, Sharing]
+      summary: List folders shared directly with the signed-in account
+      description: >-
+        Lists active, unexpired direct folder grants. Descendants are opened by
+        browsing the corresponding folder. A page past the last result is empty.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of folders directly shared with the current account.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedFoldersResponse'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -1038,8 +1187,12 @@ components:
           $ref: '#/components/schemas/Success'
         data:
           type: object
-          required: [folder, breadcrumbs, items]
+          required: [access, folder, breadcrumbs, items]
           properties:
+            access:
+              type: string
+              enum: [owner, viewer]
+              description: Current account access for this folder view.
             folder:
               description: Current folder details or null for root.
               oneOf:
@@ -1093,7 +1246,7 @@ components:
           $ref: '#/components/schemas/Success'
         data:
           type: object
-          required: [id, trashedAt]
+          required: [id, trashedAt, folderId]
           properties:
             id:
               type: string
@@ -1103,6 +1256,11 @@ components:
               format: date-time
               nullable: true
               description: Time moved to Trash, or null when active.
+            folderId:
+              type: string
+              format: uuid
+              nullable: true
+              description: File's resulting parent. Null means the owner's root.
     UpdateFileRequest:
       type: object
       minProperties: 1
@@ -1114,6 +1272,11 @@ components:
           $ref: '#/components/schemas/FileDescription'
         tags:
           $ref: '#/components/schemas/FileTags'
+        folderId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Move the file to an owned folder. Null means the owner's root.
     GrantFileShareRequest:
       type: object
       additionalProperties: false
@@ -1200,6 +1363,42 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/SharedFile'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    SharedFolder:
+      type: object
+      required: [kind, id, name, ownerName, sharedAt, expiresAt]
+      properties:
+        kind:
+          type: string
+          enum: [folder]
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        ownerName:
+          type: string
+        sharedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+    SharedFoldersResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/SharedFolder'
         pagination:
           $ref: '#/components/schemas/Pagination'
     RevokeFileShareResponse:

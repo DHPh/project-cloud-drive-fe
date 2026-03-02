@@ -5,14 +5,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { ApiError, listFolder, type FileItem, type FolderSummary, type User } from '@/lib/api';
+import { ApiError, listFolder, type FileItem, type FolderItem, type FolderSummary, type User } from '@/lib/api';
 import { localizedError } from '@/lib/messages';
 import { driveHref, fileHref, pageNumber, type DriveView } from '@/lib/routes';
 import { useAccountSession } from '../account-session';
 import { useLocale } from '../providers';
 import { DriveItems } from './drive-items';
 import { DriveLayout } from './drive-layout';
-import { FolderMoveDialog } from './folder-move-dialog';
+import { MoveDialog } from './folder-move-dialog';
 import { FolderNameDialog } from './folder-name-dialog';
 import { RenameDialog } from './rename-dialog';
 import { ShareDialog } from './share-dialog';
@@ -22,8 +22,9 @@ import { UploadDialog } from './upload-dialog';
 type ActiveDialog =
   | { kind: 'upload' | 'create-folder'; trigger: HTMLElement | null }
   | { kind: 'rename' | 'trash'; file: FileItem; trigger: HTMLElement }
-  | { kind: 'share'; file: FileItem; fileLink: string; trigger: HTMLElement }
-  | { kind: 'rename-folder' | 'move-folder'; folder: FolderSummary; trigger: HTMLElement };
+  | { kind: 'share'; item: FolderItem; itemLink: string; trigger: HTMLElement }
+  | { kind: 'rename-folder'; folder: FolderSummary; trigger: HTMLElement }
+  | { kind: 'move'; item: FolderItem; trigger: HTMLElement };
 
 export function DriveScreen({ initialUser }: { initialUser: User }) {
   const params = useSearchParams();
@@ -57,7 +58,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
   const [dialog, setDialog] = useState<ActiveDialog | null>(null);
   const [notice, setNotice] = useState<{ message: string; href?: string } | null>(null);
   const nextTrashFocus = useRef<string | null>(null);
-  const nextFolderMoveFocus = useRef<string | null>(null);
+  const nextMoveFocus = useRef<string | null>(null);
 
   const queryKey = ['drive', user.id, folder, search, page] as const;
   const query = useQuery({
@@ -65,6 +66,8 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
     queryFn: ({ signal }) => listFolder(folder, search, page, signal),
     enabled: !expired,
     placeholderData: (previous, previousQuery) => previousQuery?.queryKey[2] === folder ? previous : undefined,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 
   useEffect(() => {
@@ -79,7 +82,10 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
     void queryClient.invalidateQueries({ queryKey: ['drive', user.id, folder] });
   }
 
-  const data = query.data;
+  const checkingAccess = query.isPending || (!query.isFetchedAfterMount && query.isFetching);
+  const data = query.error || checkingAccess || expired ? undefined : query.data;
+  const canManage = data?.data.access === 'owner';
+  const readOnly = data?.data.access === 'viewer';
   const folders = data?.data.items.filter((item) => item.kind === 'folder') ?? [];
   const files = data?.data.items.filter((item) => item.kind === 'file') ?? [];
   const homeHref = driveHref('root', '', 1, view);
@@ -98,9 +104,10 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
     setDialog({ kind: 'trash', file, trigger });
   }
 
-  function openShare(file: FileItem, trigger: HTMLElement) {
+  function openShare(item: FolderItem, trigger: HTMLElement) {
     setNotice(null);
-    setDialog({ kind: 'share', file, fileLink: new URL(fileHref(file.id), window.location.origin).href, trigger });
+    const href = item.kind === 'folder' ? driveHref(item.id) : fileHref(item.id);
+    setDialog({ kind: 'share', item, itemLink: new URL(href, window.location.origin).href, trigger });
   }
 
   function openFolderRename(item: FolderSummary, trigger: HTMLElement) {
@@ -108,10 +115,10 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
     setDialog({ kind: 'rename-folder', folder: item, trigger });
   }
 
-  function openFolderMove(item: FolderSummary, trigger: HTMLElement) {
+  function openMove(item: FolderItem, trigger: HTMLElement) {
     setNotice(null);
-    nextFolderMoveFocus.current = null;
-    setDialog({ kind: 'move-folder', folder: item, trigger });
+    nextMoveFocus.current = null;
+    setDialog({ kind: 'move', item, trigger });
   }
 
   async function refreshFolderLists() {
@@ -121,16 +128,19 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
     ]);
   }
 
-  function onFolderMoved(item: FolderSummary) {
-    const index = folders.findIndex((folderItem) => folderItem.id === item.id);
-    const neighbor = index < 0 ? undefined : folders[index + 1] ?? folders[index - 1];
-    nextFolderMoveFocus.current = neighbor ? `folder-move-${neighbor.id}` : null;
+  function onItemMoved(item: FolderItem) {
+    const candidates = item.kind === 'folder' ? folders : files;
+    const index = candidates.findIndex((entry) => entry.id === item.id);
+    const neighbor = index < 0 ? undefined : candidates[index + 1] ?? candidates[index - 1];
+    nextMoveFocus.current = neighbor ? `${item.kind}-move-${neighbor.id}` : null;
     queryClient.setQueryData(queryKey, (previous: typeof data) => previous && {
       ...previous,
       data: { ...previous.data, items: previous.data.items.filter((entry) => entry.id !== item.id) },
     });
     void refreshFolderLists();
-    setNotice({ message: text.folderMoved, href: driveHref(item.parentId ?? 'root', '', 1, view) });
+    if (item.kind === 'file') void queryClient.invalidateQueries({ queryKey: ['file', user.id, item.id] });
+    const target = item.kind === 'folder' ? item.parentId : item.folderId;
+    setNotice({ message: item.kind === 'folder' ? text.folderMoved : text.fileMoved, href: driveHref(target ?? 'root', '', 1, view) });
     setDialog(null);
   }
 
@@ -156,23 +166,23 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
       signingOut={signingOut} signOutError={signOutError} onSignOut={() => void signOut()}
       drive={{
         folder, search, onSearch: changeSearch,
-        onUpload: (trigger) => { setNotice(null); setDialog({ kind: 'upload', trigger }); },
-        onCreateFolder: (trigger) => { setNotice(null); setDialog({ kind: 'create-folder', trigger }); },
+        onUpload: canManage ? (trigger) => { setNotice(null); setDialog({ kind: 'upload', trigger }); } : undefined,
+        onCreateFolder: canManage ? (trigger) => { setNotice(null); setDialog({ kind: 'create-folder', trigger }); } : undefined,
       }}
     >
       <div className="mx-auto max-w-screen-2xl space-y-5 p-4 sm:p-6 lg:p-8">
-        <h1 className="sr-only">{text.myDrive}</h1>
+        <h1 className="sr-only">{readOnly ? data?.data.folder?.name : text.myDrive}</h1>
         <div className="flex min-w-0 items-start justify-between gap-2">
           <nav className="min-w-0" aria-label={text.breadcrumb}>
             <ol className="flex flex-wrap items-center gap-1 text-sm font-medium text-gray-800 sm:text-base">
-              <li>
+              {!readOnly && (folder === 'root' || canManage) && <li>
                 <Link href={homeHref} prefetch={false} aria-current={folder === 'root' ? 'page' : undefined} className="flex min-h-10 items-center gap-1.5 rounded-md px-1 py-1 text-base font-semibold hover:text-primary-800 sm:text-lg">
                   <HomeIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-gray-500" />{text.myDrive}
                 </Link>
-              </li>
-              {data?.data.breadcrumbs.map((crumb) => (
+              </li>}
+              {data?.data.breadcrumbs.map((crumb, index) => (
                 <li key={crumb.id} className="flex min-w-0 items-center gap-1">
-                  <ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-500" />
+                  {(!readOnly || index > 0) && <ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-500" />}
                   {crumb.id === folder
                     ? <span aria-current="page" title={crumb.name} className="max-w-[11rem] truncate sm:max-w-sm">{crumb.name}</span>
                     : <Link href={driveHref(crumb.id, '', 1, view)} prefetch={false} className="max-w-[11rem] truncate rounded-md px-1 py-1.5 hover:text-primary-800 sm:max-w-sm" title={crumb.name}>{crumb.name}</Link>}
@@ -185,6 +195,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
             <button type="button" aria-label={text.list} title={text.list} aria-pressed={view === 'list'} className={`icon-button ${view === 'list' ? 'bg-white shadow-sm' : ''}`} onClick={() => window.history.replaceState(null, '', driveHref(folder, search, page, 'list'))}><ListBulletIcon className="h-5 w-5" /></button>
           </div>
         </div>
+        {readOnly && <p data-testid="drive-read-only" className="w-fit rounded-full bg-primary-50 px-3 py-1 text-sm font-medium text-primary-900">{text.readOnly}</p>}
         <div className={notice ? 'flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900' : 'sr-only'}>
           <p role="status" data-testid="drive-status">{notice?.message || (query.isFetching ? text.updating : '')}</p>
           {notice?.href && <Link href={notice.href} prefetch={false} data-testid="folder-move-destination" className="rounded-sm font-medium underline">{text.openMoveDestination}</Link>}
@@ -201,7 +212,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
             <button type="button" className="button button-secondary" onClick={() => void query.refetch()}>{text.retry}</button>
           </div>
         )}
-        {query.isPending && !expired && !error && (
+        {checkingAccess && !expired && !error && (
           <div role="status" aria-busy="true" className="space-y-4">
             <span className="sr-only">{text.loading}</span>
             <div aria-hidden="true" className={view === 'grid' ? 'grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]' : 'space-y-1.5'}>
@@ -218,16 +229,16 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
                 <h2 className="mt-2 text-lg font-semibold">
                   {search ? text.noResults : page > 1 ? text.emptyPage : text.noFolderItems}
                 </h2>
-                {search ? <p className="text-sm text-gray-600">{text.noResultsDescription}</p> : page === 1 && <p className="text-sm text-gray-600">{text.noFolderItemsDescription}</p>}
+                {search ? <p className="text-sm text-gray-600">{text.noResultsDescription}</p> : page === 1 && <p className="text-sm text-gray-600">{readOnly ? text.readOnlyFolderEmpty : text.noFolderItemsDescription}</p>}
                 {page > 1 ? (
                   <Link href={driveHref(folder, search, 1, view)} prefetch={false} className="button button-secondary">{text.firstPage}</Link>
-                ) : !search && (
+                ) : !search && canManage && (
                   <button type="button" data-testid="upload-empty-open" className="button button-primary" onClick={(event) => setDialog({ kind: 'upload', trigger: event.currentTarget })}><ArrowUpTrayIcon className="h-5 w-5" />{text.upload}</button>
                 )}
               </div>
             )}
-            <DriveItems title={text.folders} items={folders} view={view} onRename={openRename} onTrash={openTrash} onShare={openShare} onFolderRename={openFolderRename} onFolderMove={openFolderMove} />
-            <DriveItems title={text.files} items={files} view={view} onRename={openRename} onTrash={openTrash} onShare={openShare} onFolderRename={openFolderRename} onFolderMove={openFolderMove} />
+            <DriveItems title={text.folders} items={folders} view={view} canManage={canManage} onRename={openRename} onTrash={openTrash} onShare={openShare} onFolderRename={openFolderRename} onMove={openMove} />
+            <DriveItems title={text.files} items={files} view={view} canManage={canManage} onRename={openRename} onTrash={openTrash} onShare={openShare} onFolderRename={openFolderRename} onMove={openMove} />
             {data.pagination.totalPages > 1 && (
               <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-4 text-sm">
                 <p className="text-gray-600">{text.page} {page} / {data.pagination.totalPages} · {new Intl.NumberFormat(locale).format(data.pagination.total)} {text.items}</p>
@@ -260,7 +271,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
         }} />
       )}
       {dialog?.kind === 'share' && (
-        <ShareDialog file={dialog.file} fileLink={dialog.fileLink} trigger={dialog.trigger} userId={user.id} suspended={expired} onDismiss={() => setDialog(null)} onExpired={onExpired} />
+        <ShareDialog item={dialog.item} itemLink={dialog.itemLink} trigger={dialog.trigger} userId={user.id} suspended={expired} onDismiss={() => setDialog(null)} onExpired={onExpired} />
       )}
       {(dialog?.kind === 'create-folder' || dialog?.kind === 'rename-folder') && (
         <FolderNameDialog folder={dialog.kind === 'rename-folder' ? dialog.folder : undefined} parent={folder} trigger={dialog.trigger} suspended={expired}
@@ -269,9 +280,9 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
             setNotice({ message: dialog.kind === 'rename-folder' ? text.folderRenamed : text.folderCreated });
           }} />
       )}
-      {dialog?.kind === 'move-folder' && (
-        <FolderMoveDialog folder={dialog.folder} userId={user.id} trigger={dialog.trigger} suspended={expired} onDismiss={() => setDialog(null)} onExpired={onExpired} onMoved={onFolderMoved} focusAfterMove={() => {
-          const neighbor = nextFolderMoveFocus.current ? document.getElementById(nextFolderMoveFocus.current) : null;
+      {dialog?.kind === 'move' && (
+        <MoveDialog item={dialog.item} userId={user.id} trigger={dialog.trigger} suspended={expired} onDismiss={() => setDialog(null)} onExpired={onExpired} onMoved={onItemMoved} focusAfterMove={() => {
+          const neighbor = nextMoveFocus.current ? document.getElementById(nextMoveFocus.current) : null;
           (neighbor ?? document.getElementById('drive-main'))?.focus();
         }} />
       )}

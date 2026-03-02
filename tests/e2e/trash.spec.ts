@@ -130,7 +130,7 @@ test('TRASH-01 moves and restores the same file without exposing it to another u
   await restoreAction.press('Enter')
   const restored = await restoredInBrowser
   expect(restored.status()).toBe(200)
-  expect(await restored.json()).toEqual({ success: true, data: { id: fileId, trashedAt: null } })
+  expect(await restored.json()).toEqual({ success: true, data: { id: fileId, trashedAt: null, folderId: projects } })
   await expect(trashItem).toHaveCount(0)
   await expect(page.getByTestId('trash-status')).toContainText(/đã khôi phục|restored/i)
   const nextFocus = nextFocusId
@@ -140,7 +140,7 @@ test('TRASH-01 moves and restores the same file without exposing it to another u
 
   const repeatedRestore = await owner.post(`${api}/files/${fileId}/restore`)
   expect(repeatedRestore.status()).toBe(200)
-  expect(await repeatedRestore.json()).toEqual({ success: true, data: { id: fileId, trashedAt: null } })
+  expect(await repeatedRestore.json()).toEqual({ success: true, data: { id: fileId, trashedAt: null, folderId: projects } })
 
   await page.goto(driveUrl)
   await expect(driveItem.getByText(originalName, { exact: true })).toBeVisible()

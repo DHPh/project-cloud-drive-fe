@@ -9,8 +9,8 @@ export const metadata: Metadata = { title: 'Được chia sẻ với tôi' };
 export default async function SharedFilesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await readServerUser();
   if (!user) {
-    const { page } = await searchParams;
-    redirect(loginHref(sharedHref(pageNumber(typeof page === 'string' ? page : null))));
+    const { page, tab } = await searchParams;
+    redirect(loginHref(sharedHref(pageNumber(typeof page === 'string' ? page : null), tab === 'folders' ? 'folders' : 'files')));
   }
   return <SharedFilesScreen key={user.id} initialUser={user} />;
 }

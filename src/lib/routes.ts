@@ -1,4 +1,5 @@
 export type DriveView = 'grid' | 'list';
+export type SharedTab = 'files' | 'folders';
 export type SearchParams = Record<string, string | string[] | undefined>;
 
 export function driveHref(folder: string, q = '', page = 1, view: DriveView = 'grid') {
@@ -15,8 +16,12 @@ export function trashHref(page = 1) {
   return page === 1 ? '/trash' : `/trash?page=${page}`;
 }
 
-export function sharedHref(page = 1) {
-  return page === 1 ? '/shared-with-me' : `/shared-with-me?page=${page}`;
+export function sharedHref(page = 1, tab: SharedTab = 'files') {
+  const params = new URLSearchParams();
+  if (tab === 'folders') params.set('tab', tab);
+  if (page > 1) params.set('page', String(page));
+  const query = params.toString();
+  return query ? `/shared-with-me?${query}` : '/shared-with-me';
 }
 
 const fileIdPattern = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';

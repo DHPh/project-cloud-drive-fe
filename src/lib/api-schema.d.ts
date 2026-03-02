@@ -107,7 +107,7 @@ export interface paths {
         };
         /**
          * List direct children of a folder
-         * @description Use root for the signed-in user's root. Pagination applies to the combined file and folder list after filtering. Results sort by kind (folders first), then by display name without case sensitivity, then by ID in ascending order. A page past the last result returns an empty items array. Files in Trash are excluded from listing and search. With type=folders, only folders count toward total or pagination.
+         * @description Use root for the signed-in user's root. Pagination applies to the combined file and folder list after filtering. Results sort by kind (folders first), then by display name without case sensitivity, then by ID in ascending order. A page past the last result returns an empty items array. Files in Trash are excluded from listing and search. With type=folders, only folders count toward total or pagination. A recipient can list a folder with an active share on it or an ancestor. Recipient breadcrumbs are limited to folders that account may view.
          */
         get: operations["listFolderContents"];
         put?: never;
@@ -147,7 +147,7 @@ export interface paths {
         };
         /**
          * Read file information
-         * @description The owner or a recipient with an unexpired grant can read a ready, active file.
+         * @description The owner or a recipient with an unexpired direct or inherited grant can read a ready, active file.
          */
         get: operations["getFile"];
         put?: never;
@@ -156,8 +156,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Edit file name, description, or tags
-         * @description At least one field is required. Omitted fields keep their current values. Set description to null or tags to an empty array to clear them. Files in Trash return 404.
+         * Edit file metadata or move it to a folder
+         * @description At least one field is required. Omitted fields keep their current values. Set description to null or tags to an empty array to clear them. An owner can change folderId to an owned folder or null for their root. Moving keeps file ID, object, quota and direct grants. Inherited access follows the new location. Files in Trash return 404.
          */
         patch: operations["updateFile"];
         trace?: never;
@@ -171,7 +171,7 @@ export interface paths {
         };
         /**
          * Download the file as an attachment
-         * @description The owner or a recipient with an unexpired grant can download the active file. Files in Trash return 404.
+         * @description The owner or a recipient with an unexpired direct or inherited grant can download the active file. Files in Trash return 404.
          */
         get: operations["downloadFile"];
         put?: never;
@@ -212,8 +212,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Restore a file to its original location
-         * @description The owner can restore a ready file to its original folder or root. Repeating the request on an active file returns the same active state. File ID, folder, object, and storage usage are preserved. Restoring a file does not restore sharing grants.
+         * Restore a file to a private location
+         * @description The owner restores an active file to its original location when that location is private. If its original folder or an ancestor has an unexpired grant, it restores to the owner's root. Repeating the request on an active file returns the same active state. File ID, object and storage usage are preserved. The response includes the resulting folderId. Restoring a file does not restore sharing grants.
          */
         post: operations["restoreFile"];
         delete?: never;
@@ -295,9 +295,73 @@ export interface paths {
         };
         /**
          * List files shared with the signed-in account
-         * @description Includes ready, active files with unexpired grants. Sorts by latest sharedAt, then file ID. A page past the last result returns an empty items array.
+         * @description Includes ready, active files with unexpired direct file grants. Sorts by latest sharedAt, then file ID. A page past the last result returns an empty items array.
          */
         get: operations["listSharedFiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/folders/{folderId}/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List sharing grants of a folder owned by the signed-in account
+         * @description Includes expired grants. Sorts by latest grantedAt, then recipient ID.
+         */
+        get: operations["listFolderShares"];
+        /**
+         * Grant or update read and download access to a folder and its descendants
+         * @description The folder owner grants access to an existing account by email. A blank expiry on a new grant defaults to one calendar month in Vietnam time. A repeated request with a blank expiry preserves an active grant's expiration. An unknown recipient email returns 404 with code RECIPIENT_NOT_FOUND.
+         */
+        put: operations["grantFolderShare"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/folders/{folderId}/shares/{recipientId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a recipient's direct grant on the folder
+         * @description Only the folder owner may revoke. This removes the access inherited from this grant. Repeating revocation returns the same result.
+         */
+        delete: operations["revokeFolderShare"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared-folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List folders shared directly with the signed-in account
+         * @description Lists active, unexpired direct folder grants. Descendants are opened by browsing the corresponding folder. A page past the last result is empty.
+         */
+        get: operations["listSharedFolders"];
         put?: never;
         post?: never;
         delete?: never;
@@ -432,6 +496,11 @@ export interface components {
         FolderContentsResponse: {
             success: components["schemas"]["Success"];
             data: {
+                /**
+                 * @description Current account access for this folder view.
+                 * @enum {string}
+                 */
+                access: "owner" | "viewer";
                 /** @description Current folder details or null for root. */
                 folder: components["schemas"]["FolderSummary"] | (never | null);
                 /** @description Visible ancestors in root-to-leaf order, followed by the current folder. The user's root is implicit and returns an empty array. */
@@ -461,12 +530,22 @@ export interface components {
                  * @description Time moved to Trash, or null when active.
                  */
                 trashedAt: string | null;
+                /**
+                 * Format: uuid
+                 * @description File's resulting parent. Null means the owner's root.
+                 */
+                folderId: string | null;
             };
         };
         UpdateFileRequest: {
             originalName?: components["schemas"]["FileName"];
             description?: components["schemas"]["FileDescription"];
             tags?: components["schemas"]["FileTags"];
+            /**
+             * Format: uuid
+             * @description Move the file to an owned folder. Null means the owner's root.
+             */
+            folderId?: string | null;
         };
         GrantFileShareRequest: {
             /** Format: email */
@@ -512,6 +591,25 @@ export interface components {
             success: components["schemas"]["Success"];
             data: {
                 items: components["schemas"]["SharedFile"][];
+            };
+            pagination: components["schemas"]["Pagination"];
+        };
+        SharedFolder: {
+            /** @enum {string} */
+            kind: "folder";
+            /** Format: uuid */
+            id: string;
+            name: string;
+            ownerName: string;
+            /** Format: date-time */
+            sharedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        SharedFoldersResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                items: components["schemas"]["SharedFolder"][];
             };
             pagination: components["schemas"]["Pagination"];
         };
@@ -1270,6 +1368,124 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SharedFilesResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listFolderShares: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                folderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of direct sharing grants for the folder. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileSharesResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    grantFolderShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantFileShareRequest"];
+            };
+        };
+        responses: {
+            /** @description The current folder grant and its effective expiration. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileShareResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    revokeFolderShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderId: string;
+                recipientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The grant has been revoked. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokeFileShareResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listSharedFolders: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of folders directly shared with the current account. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedFoldersResponse"];
                 };
             };
             400: components["responses"]["InvalidRequest"];

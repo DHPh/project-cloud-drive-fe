@@ -3,23 +3,23 @@
 import { ChevronRightIcon, FolderIcon } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { ApiError, listFolder, updateFolder, type FolderSummary } from '@/lib/api';
+import { ApiError, listFolder, updateFile, updateFolder, type FolderItem } from '@/lib/api';
 import { localizedError } from '@/lib/messages';
 import { Overlay } from '../overlay';
 import { useLocale } from '../providers';
 
 type Props = {
-  folder: FolderSummary;
+  item: FolderItem;
   userId: string;
   trigger: HTMLElement;
   suspended: boolean;
   onDismiss: () => void;
   onExpired: () => void;
-  onMoved: (folder: FolderSummary) => void;
+  onMoved: (item: FolderItem) => void;
   focusAfterMove: () => void;
 };
 
-export function FolderMoveDialog({ folder, userId, trigger, suspended, onDismiss, onExpired, onMoved, focusAfterMove }: Props) {
+export function MoveDialog({ item, userId, trigger, suspended, onDismiss, onExpired, onMoved, focusAfterMove }: Props) {
   const { text } = useLocale();
   const [destination, setDestination] = useState({ id: 'root', name: '' });
   const [page, setPage] = useState(1);
@@ -38,13 +38,15 @@ export function FolderMoveDialog({ folder, userId, trigger, suspended, onDismiss
   });
   const data = query.data?.data;
   const pages = query.data?.pagination.totalPages ?? 0;
-  const currentParent = folder.parentId ?? 'root';
+  const name = item.kind === 'folder' ? item.name : item.originalName;
+  const testId = `${item.kind}-move`;
+  const currentParent = (item.kind === 'folder' ? item.parentId : item.folderId) ?? 'root';
   const ancestors = data?.breadcrumbs.filter((crumb) => crumb.id !== destination.id) ?? [];
-  const forbidden = destination.id === folder.id || Boolean(data?.breadcrumbs.some((crumb) => crumb.id === folder.id));
+  const forbidden = item.kind === 'folder' && (destination.id === item.id || Boolean(data?.breadcrumbs.some((crumb) => crumb.id === item.id)));
   const sameParent = destination.id === currentParent;
-  const available = data?.items.filter((item) => item.kind === 'folder').filter((item) => item.id !== folder.id) ?? [];
+  const available = data?.items.filter((entry) => entry.kind === 'folder').filter((entry) => item.kind !== 'folder' || entry.id !== item.id) ?? [];
   const loading = query.isPending || query.isPlaceholderData;
-  const canMove = query.isSuccess && !loading && !pending && !suspended && !sameParent && !forbidden;
+  const canMove = data?.access === 'owner' && query.isSuccess && !loading && !pending && !suspended && !sameParent && !forbidden;
   const canPage = !loading && !pending;
 
   useEffect(() => () => request.current?.abort(), []);
@@ -81,7 +83,10 @@ export function FolderMoveDialog({ folder, userId, trigger, suspended, onDismiss
     setError(null);
     setPending(true);
     try {
-      const updated = await updateFolder(folder.id, { parentId: destination.id === 'root' ? null : destination.id }, controller.signal);
+      const target = destination.id === 'root' ? null : destination.id;
+      const updated = item.kind === 'folder'
+        ? await updateFolder(item.id, { parentId: target }, controller.signal)
+        : await updateFile(item.id, { folderId: target }, controller.signal);
       if (controller.signal.aborted) return;
       moved.current = true;
       onMoved(updated);
@@ -98,7 +103,7 @@ export function FolderMoveDialog({ folder, userId, trigger, suspended, onDismiss
 
   return (
     <Overlay
-      open={!suspended} testId="folder-move-dialog" title={text.moveFolder} description={text.moveFolderDescription}
+      open={!suspended} testId={`${testId}-dialog`} title={item.kind === 'folder' ? text.moveFolder : text.moveFile} description={item.kind === 'folder' ? text.moveFolderDescription : text.moveFileDescription}
       onDismiss={pending ? undefined : dismiss} initialFocus={currentHeading}
       restoreFallback={() => {
         if (moved.current || !trigger.isConnected) focusAfterMove();
@@ -106,7 +111,7 @@ export function FolderMoveDialog({ folder, userId, trigger, suspended, onDismiss
       }}
     >
       <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
-        <p className="break-words text-sm font-semibold" title={folder.name}>{folder.name}</p>
+        <p className="break-words text-sm font-semibold" title={name}>{name}</p>
         {destination.id !== 'root' && (
           <nav aria-label={text.breadcrumb}>
             <ol className="flex flex-wrap items-center gap-1 text-sm">
@@ -155,11 +160,11 @@ export function FolderMoveDialog({ folder, userId, trigger, suspended, onDismiss
         )}
       </div>
       <div className="shrink-0 space-y-2 border-t border-gray-200 px-5 py-4 sm:px-6">
-        {error && <p data-testid="folder-move-error" role="alert" className="text-sm text-red-800">{error}</p>}
-        {sameParent && <p className="text-sm text-gray-600">{text.sameFolderParent}</p>}
+        {error && <p data-testid={`${testId}-error`} role="alert" className="text-sm text-red-800">{error}</p>}
+        {sameParent && <p className="text-sm text-gray-600">{item.kind === 'folder' ? text.sameFolderParent : text.sameFileParent}</p>}
         <div className="flex flex-wrap justify-end gap-2">
-          <button type="button" data-testid="folder-move-cancel" className="button button-secondary min-h-11" disabled={pending} onClick={dismiss}>{text.cancel}</button>
-          <button type="button" data-testid="folder-move-submit" className="button button-primary min-h-11 aria-disabled:cursor-not-allowed aria-disabled:opacity-60" aria-disabled={!canMove} aria-busy={pending} onClick={() => void submit()}>
+          <button type="button" data-testid={`${testId}-cancel`} className="button button-secondary min-h-11" disabled={pending} onClick={dismiss}>{text.cancel}</button>
+          <button type="button" data-testid={`${testId}-submit`} className="button button-primary min-h-11 aria-disabled:cursor-not-allowed aria-disabled:opacity-60" aria-disabled={!canMove} aria-busy={pending} onClick={() => void submit()}>
             {pending ? text.movingFolder : text.moveHere}
           </button>
         </div>

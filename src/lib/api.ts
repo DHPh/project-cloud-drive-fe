@@ -8,7 +8,7 @@ export type FolderItem = components['schemas']['FolderItem'];
 export type FolderSummary = components['schemas']['FolderSummary'];
 type ErrorPayload = components['schemas']['ErrorResponse'];
 type LoginRequest = operations['login']['requestBody']['content']['application/json'];
-type RenameRequest = operations['updateFile']['requestBody']['content']['application/json'];
+type UpdateFileRequest = operations['updateFile']['requestBody']['content']['application/json'];
 type LoginResponse = operations['login']['responses'][200]['content']['application/json'];
 type SessionResponse = operations['getCurrentUser']['responses'][200]['content']['application/json'];
 type LogoutResponse = operations['logout']['responses'][200]['content']['application/json'];
@@ -19,16 +19,18 @@ type UpdateFolderRequest = operations['updateFolder']['requestBody']['content'][
 type CreateFolderResponse = operations['createFolder']['responses'][201]['content']['application/json'];
 type UpdateFolderResponse = operations['updateFolder']['responses'][200]['content']['application/json'];
 type FileResponse = operations['uploadFile']['responses'][201]['content']['application/json'];
-type RenameResponse = operations['updateFile']['responses'][200]['content']['application/json'];
+type UpdateFileResponse = operations['updateFile']['responses'][200]['content']['application/json'];
 type TrashListResponse = operations['listTrash']['responses'][200]['content']['application/json'];
 type TrashResponse = operations['trashFile']['responses'][200]['content']['application/json'];
 type RestoreResponse = operations['restoreFile']['responses'][200]['content']['application/json'];
 type FileDetailResponse = operations['getFile']['responses'][200]['content']['application/json'];
 type FileSharesResponse = operations['listFileShares']['responses'][200]['content']['application/json'];
-type GrantShareRequest = operations['grantFileShare']['requestBody']['content']['application/json'];
-type GrantShareResponse = operations['grantFileShare']['responses'][200]['content']['application/json'];
-type RevokeShareResponse = operations['revokeFileShare']['responses'][200]['content']['application/json'];
+type FolderSharesResponse = operations['listFolderShares']['responses'][200]['content']['application/json'];
+type GrantShareRequest = operations['grantFileShare']['requestBody']['content']['application/json'] | operations['grantFolderShare']['requestBody']['content']['application/json'];
+type GrantShareResponse = operations['grantFileShare']['responses'][200]['content']['application/json'] | operations['grantFolderShare']['responses'][200]['content']['application/json'];
+type RevokeShareResponse = operations['revokeFileShare']['responses'][200]['content']['application/json'] | operations['revokeFolderShare']['responses'][200]['content']['application/json'];
 type SharedFilesResponse = operations['listSharedFiles']['responses'][200]['content']['application/json'];
+type SharedFoldersResponse = operations['listSharedFolders']['responses'][200]['content']['application/json'];
 export type TrashItem = TrashListResponse['data']['items'][number];
 export type ShareGrant = FileSharesResponse['data']['items'][number];
 
@@ -60,7 +62,7 @@ async function json<Response>(path: string, options?: RequestInit): Promise<Resp
   return (await request(path, options)).json();
 }
 
-function jsonOptions(method: 'POST' | 'PATCH', body: LoginRequest | RenameRequest | CreateFolderRequest | UpdateFolderRequest, signal?: AbortSignal): RequestInit {
+function jsonOptions(method: 'POST' | 'PATCH', body: LoginRequest | UpdateFileRequest | CreateFolderRequest | UpdateFolderRequest, signal?: AbortSignal): RequestInit {
   return { method, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' }, signal };
 }
 
@@ -92,8 +94,11 @@ export async function updateFolder(folderId: string, changes: UpdateFolderReques
 }
 
 export async function renameFile(fileId: string, originalName: string, signal: AbortSignal) {
-  const result = await json<RenameResponse>(`/files/${encodeURIComponent(fileId)}`, jsonOptions('PATCH', { originalName }, signal));
-  return result.data;
+  return updateFile(fileId, { originalName }, signal);
+}
+
+export async function updateFile(fileId: string, changes: UpdateFileRequest, signal: AbortSignal) {
+  return (await json<UpdateFileResponse>(`/files/${encodeURIComponent(fileId)}`, jsonOptions('PATCH', changes, signal))).data;
 }
 
 export function listTrash(page: number, signal: AbortSignal) {
@@ -114,22 +119,28 @@ export async function getFile(fileId: string, signal: AbortSignal) {
   return (await json<FileDetailResponse>(`/files/${encodeURIComponent(fileId)}`, { signal })).data;
 }
 
-export function listFileShares(fileId: string, page: number, signal: AbortSignal) {
-  return json<FileSharesResponse>(`/files/${encodeURIComponent(fileId)}/shares?page=${page}`, { signal });
+function itemSharePath(item: Pick<FolderItem, 'id' | 'kind'>) {
+  const collection = item.kind === 'folder' ? 'folders' : 'files';
+  return `/${collection}/${encodeURIComponent(item.id)}/shares`;
 }
 
-export async function grantFileShare(fileId: string, grant: GrantShareRequest, signal: AbortSignal) {
-  return (await json<GrantShareResponse>(`/files/${encodeURIComponent(fileId)}/shares`, {
+export function listItemShares(item: Pick<FolderItem, 'id' | 'kind'>, page: number, signal: AbortSignal) {
+  return json<FileSharesResponse | FolderSharesResponse>(`${itemSharePath(item)}?page=${page}`, { signal });
+}
+
+export async function grantItemShare(item: Pick<FolderItem, 'id' | 'kind'>, grant: GrantShareRequest, signal: AbortSignal) {
+  return (await json<GrantShareResponse>(itemSharePath(item), {
     method: 'PUT', body: JSON.stringify(grant), headers: { 'Content-Type': 'application/json' }, signal,
   })).data;
 }
 
-export async function revokeFileShare(fileId: string, recipientId: string, signal: AbortSignal) {
-  await json<RevokeShareResponse>(`/files/${encodeURIComponent(fileId)}/shares/${encodeURIComponent(recipientId)}`, { method: 'DELETE', signal });
+export async function revokeItemShare(item: Pick<FolderItem, 'id' | 'kind'>, recipientId: string, signal: AbortSignal) {
+  await json<RevokeShareResponse>(`${itemSharePath(item)}/${encodeURIComponent(recipientId)}`, { method: 'DELETE', signal });
 }
 
-export function listSharedFiles(page: number, signal: AbortSignal) {
-  return json<SharedFilesResponse>(`/shared-with-me?page=${page}`, { signal });
+export function listSharedItems(tab: 'files' | 'folders', page: number, signal: AbortSignal) {
+  const path = tab === 'folders' ? '/shared-folders' : '/shared-with-me';
+  return json<SharedFilesResponse | SharedFoldersResponse>(`${path}?page=${page}`, { signal });
 }
 
 export function downloadUrl(fileId: string) {
