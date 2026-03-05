@@ -21,7 +21,8 @@ import { UploadDialog } from './upload-dialog';
 
 type ActiveDialog =
   | { kind: 'upload' | 'create-folder'; trigger: HTMLElement | null }
-  | { kind: 'rename' | 'trash'; file: FileItem; trigger: HTMLElement }
+  | { kind: 'rename'; file: FileItem; trigger: HTMLElement }
+  | { kind: 'trash'; item: FolderItem; trigger: HTMLElement }
   | { kind: 'share'; item: FolderItem; itemLink: string; trigger: HTMLElement }
   | { kind: 'rename-folder'; folder: FolderSummary; trigger: HTMLElement }
   | { kind: 'move'; item: FolderItem; trigger: HTMLElement };
@@ -98,10 +99,10 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
     setDialog({ kind: 'rename', file, trigger });
   }
 
-  function openTrash(file: FileItem, trigger: HTMLElement) {
+  function openTrash(item: FolderItem, trigger: HTMLElement) {
     setNotice(null);
     nextTrashFocus.current = null;
-    setDialog({ kind: 'trash', file, trigger });
+    setDialog({ kind: 'trash', item, trigger });
   }
 
   function openShare(item: FolderItem, trigger: HTMLElement) {
@@ -144,20 +145,23 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
     setDialog(null);
   }
 
-  function onMoved(fileId: string) {
-    const index = files.findIndex((file) => file.id === fileId);
-    const neighbor = index < 0 ? undefined : files[index + 1] ?? files[index - 1];
-    nextTrashFocus.current = neighbor ? `drive-trash-${neighbor.id}` : null;
+  function onTrashed(item: FolderItem) {
+    const candidates = item.kind === 'folder' ? folders : files;
+    const index = candidates.findIndex((entry) => entry.id === item.id);
+    const neighbor = index < 0 ? undefined : candidates[index + 1] ?? candidates[index - 1];
+    nextTrashFocus.current = neighbor ? `drive-trash-${item.kind}-${neighbor.id}` : null;
     queryClient.setQueryData(queryKey, (previous: typeof data) => previous && {
       ...previous,
-      data: { ...previous.data, items: previous.data.items.filter((item) => item.id !== fileId) },
+      data: { ...previous.data, items: previous.data.items.filter((entry) => entry.kind !== item.kind || entry.id !== item.id) },
     });
-    void queryClient.invalidateQueries({ queryKey: ['drive', user.id] });
+    void refreshFolderLists();
     void queryClient.invalidateQueries({ queryKey: ['trash', user.id] });
-    void queryClient.invalidateQueries({ queryKey: ['file', user.id, fileId] });
-    void queryClient.invalidateQueries({ queryKey: ['file-shares', user.id, fileId] });
+    const affectedFiles = item.kind === 'folder' ? [user.id] : [user.id, item.id];
+    void queryClient.invalidateQueries({ queryKey: ['file', ...affectedFiles] });
+    void queryClient.invalidateQueries({ queryKey: ['file-shares', ...affectedFiles] });
+    if (item.kind === 'folder') void queryClient.invalidateQueries({ queryKey: ['folder-shares', user.id] });
     setDialog(null);
-    setNotice({ message: text.fileTrashed });
+    setNotice({ message: item.kind === 'folder' ? text.folderTrashed : text.fileTrashed });
   }
 
   return (
@@ -265,7 +269,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
         }} />
       )}
       {dialog?.kind === 'trash' && (
-        <TrashDialog file={dialog.file} suspended={expired} trigger={dialog.trigger} onDismiss={() => setDialog(null)} onExpired={onExpired} onMoved={onMoved} focusAfterMove={() => {
+        <TrashDialog item={dialog.item} suspended={expired} trigger={dialog.trigger} onDismiss={() => setDialog(null)} onExpired={onExpired} onMoved={onTrashed} focusAfterMove={() => {
           const neighbor = nextTrashFocus.current ? document.getElementById(nextTrashFocus.current) : null;
           (neighbor ?? document.getElementById('drive-main'))?.focus();
         }} />

@@ -1,6 +1,6 @@
 # Thiết kế UX frontend
 
-Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, TRASH-01, SHARE-01 và SHARE-02. Màn hình mới tiếp nối bố cục, theme, icon, breadcrumb và chế độ lưới/danh sách của Drive Nuxt. Đối chiếu desktop và mobile trên bản chạy với dữ liệu tổng hợp.
+Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, TRASH-01, TRASH-02, SHARE-01 và SHARE-02. Màn hình mới tiếp nối bố cục, theme, icon, breadcrumb và chế độ lưới/danh sách của Drive Nuxt. Đối chiếu desktop và mobile trên bản chạy với dữ liệu tổng hợp.
 
 ## Drive
 
@@ -20,10 +20,10 @@ Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, TRASH-01, SHARE-01 và SHARE-02. 
 
 ## Thùng rác
 
-1. **Điểm vào và quyền.** Chủ sở hữu có thể đưa một tệp vào Thùng rác từ lưới hoặc danh sách Drive. Hộp thoại xác nhận hiển thị tên tệp và cho biết có thể khôi phục. Mục Thùng rác nằm ở thanh điều hướng desktop và menu mobile. `/trash` hỗ trợ mở trực tiếp và giữ đích đến qua đăng nhập.
-2. **Danh sách và thao tác.** Trang Thùng rác hiển thị tên tệp, kích thước, thời điểm đưa vào thùng rác và nút Khôi phục. Số trang nằm trên URL và dữ liệu truy vấn gắn với tài khoản. Dùng vị trí do API trả về và thông báo khi tệp phải về Drive gốc để giữ riêng tư. Cả hai thao tác làm mới những truy vấn Drive và Thùng rác liên quan. Màn hình chỉ đưa vào thùng rác hoặc khôi phục từng tệp.
-3. **Phản hồi và phục hồi.** Tách trạng thái tải lần đầu, trống và lỗi có thể thử lại. Trong lúc gửi, khóa thao tác lặp. Nếu lỗi, giữ tệp cùng hành động để người dùng thử lại. Khi trang hiện tại không còn tệp sau khôi phục, chuyển đến trang còn dữ liệu gần nhất hoặc về trang đầu.
-4. **Bàn phím và mobile.** Xác nhận mở với focus ở Hủy. Sau khi tệp rời danh sách, đưa focus đến nút thao tác của tệp kế cận, hoặc tiêu đề/nội dung chính khi không còn nút phù hợp. Thông báo kết quả qua vùng trạng thái có thể đọc bằng công nghệ hỗ trợ. Kiểm tra vùng bấm, tên tệp dài và phân trang tại cả hai viewport.
+1. **Điểm vào và quyền.** Chủ sở hữu có thể đưa tệp hoặc thư mục vào Thùng rác từ lưới hoặc danh sách Drive. Hộp thoại nêu tên mục, khả năng khôi phục và tác động đến chia sẻ. Với thư mục, nêu thao tác áp dụng cho cả cây. Mục Thùng rác nằm ở thanh điều hướng desktop và menu mobile. `/trash` hỗ trợ mở trực tiếp và giữ đích đến qua đăng nhập.
+2. **Danh sách và thao tác.** Trang Thùng rác hiển thị tệp và thư mục, thời điểm xóa và nút Khôi phục. Tệp hiển thị kích thước. Mỗi cây đã xóa cùng lúc có một mục. Số trang nằm trên URL và dữ liệu truy vấn gắn với tài khoản. Sau khôi phục, dùng tên và vị trí thực tế từ API để báo đổi tên hoặc về Drive gốc, với link mở đích phù hợp. Sau thao tác, làm mới các truy vấn Drive, Thùng rác và quyền liên quan.
+3. **Phản hồi và phục hồi.** Tách trạng thái tải lần đầu, trống và lỗi có thể thử lại. Trong lúc gửi, khóa thao tác lặp. Nếu lỗi, giữ mục cùng hành động để người dùng thử lại. Khi trang hiện tại không còn mục sau khôi phục, chuyển đến trang còn dữ liệu gần nhất hoặc về trang đầu. Khi rời trang, trạng thái phản hồi thao tác kết thúc cùng màn hình.
+4. **Bàn phím và mobile.** Xác nhận mở với focus ở Hủy. Sau khi một mục rời danh sách, đưa focus đến nút thao tác kế cận, hoặc tiêu đề/nội dung chính khi không còn nút phù hợp. Thông báo kết quả qua vùng trạng thái có thể đọc bằng công nghệ hỗ trợ. Kiểm tra vùng bấm, tên dài và phân trang tại cả hai viewport.
 
 ## Chia sẻ tệp
 

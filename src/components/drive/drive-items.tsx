@@ -19,7 +19,7 @@ function fileIcon(mimeType: string) {
 type FileAction = (file: FileItem, trigger: HTMLElement) => void;
 type FolderAction = (folder: FolderSummary, trigger: HTMLElement) => void;
 type ItemAction = (item: FolderItem, trigger: HTMLElement) => void;
-type Props = { title: string; items: FolderItem[]; view: DriveView; canManage: boolean; onRename: FileAction; onTrash: FileAction; onShare: ItemAction; onFolderRename: FolderAction; onMove: ItemAction };
+type Props = { title: string; items: FolderItem[]; view: DriveView; canManage: boolean; onRename: FileAction; onTrash: ItemAction; onShare: ItemAction; onFolderRename: FolderAction; onMove: ItemAction };
 
 export function DriveItems({ title, items, view, canManage, onRename, onTrash, onShare, onFolderRename, onMove }: Props) {
   const { locale, text } = useLocale();
@@ -67,6 +67,7 @@ export function DriveItems({ title, items, view, canManage, onRename, onTrash, o
                       <button type="button" data-testid="folder-share" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.share} aria-label={`${text.share}: ${name}`} onClick={(event) => onShare(item, event.currentTarget)}><UserPlusIcon aria-hidden="true" className="h-4 w-4" /></button>
                       <button type="button" data-testid="folder-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.rename} aria-label={`${text.rename}: ${name}`} onClick={(event) => onFolderRename(item, event.currentTarget)}><PencilSquareIcon aria-hidden="true" className="h-4 w-4" /></button>
                       <button type="button" id={`folder-move-${item.id}`} data-testid="folder-move" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.move} aria-label={`${text.move}: ${name}`} onClick={(event) => onMove(item, event.currentTarget)}><ArrowRightIcon aria-hidden="true" className="h-4 w-4" /></button>
+                      <button type="button" id={`drive-trash-folder-${item.id}`} data-testid="folder-trash" className="icon-button h-11 w-11 hover:bg-red-50 hover:text-red-800 sm:h-10 sm:w-8" title={text.moveFolderToTrash} aria-label={`${text.moveFolderToTrash}: ${name}`} onClick={(event) => onTrash(item, event.currentTarget)}><TrashIcon aria-hidden="true" className="h-4 w-4" /></button>
                     </div>
                   )}
                 </>
@@ -84,7 +85,7 @@ export function DriveItems({ title, items, view, canManage, onRename, onTrash, o
                       </>
                     )}
                     <a data-testid="file-download" href={downloadUrl(item.id)} download={name} className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.download} aria-label={`${text.download}: ${name}`}><ArrowDownTrayIcon className="h-4 w-4" /></a>
-                    {canManage && <button id={`drive-trash-${item.id}`} type="button" data-testid="file-trash" className="icon-button h-11 w-11 hover:bg-red-50 hover:text-red-800 sm:h-10 sm:w-8" title={text.moveToTrash} aria-label={`${text.moveToTrash}: ${name}`} onClick={(event) => onTrash(item, event.currentTarget)}><TrashIcon aria-hidden="true" className="h-4 w-4" /></button>}
+                    {canManage && <button id={`drive-trash-file-${item.id}`} type="button" data-testid="file-trash" className="icon-button h-11 w-11 hover:bg-red-50 hover:text-red-800 sm:h-10 sm:w-8" title={text.moveToTrash} aria-label={`${text.moveToTrash}: ${name}`} onClick={(event) => onTrash(item, event.currentTarget)}><TrashIcon aria-hidden="true" className="h-4 w-4" /></button>}
                   </div>
                 </>
               )}

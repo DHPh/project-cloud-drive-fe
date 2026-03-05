@@ -213,9 +213,49 @@ export interface paths {
         put?: never;
         /**
          * Restore a file to a private location
-         * @description The owner restores an active file to its original location when that location is private. If its original folder or an ancestor has an unexpired grant, it restores to the owner's root. Repeating the request on an active file returns the same active state. File ID, object and storage usage are preserved. The response includes the resulting folderId. Restoring a file does not restore sharing grants.
+         * @description The owner restores a trashed file to its original active, private location, or to the owner's root if that location is unavailable or shared. If an active file at the destination already has the exact name, the restored file receives the first available ` - khôi phục` suffix (` - khôi phục 2`, ` - khôi phục 3`, and so on), inserted before the final extension if present. Repeating the request on an active file returns the same active state. File ID, object and storage usage are preserved. The response includes the resulting folderId and originalName. Restoring a file does not restore sharing grants.
          */
         post: operations["restoreFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/folders/{folderId}/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move a folder and its active descendants to Trash
+         * @description The owner moves an active folder and its active descendants to Trash as a single item. This atomically revokes direct file and folder grants for the affected items. Independently trashed items stay separate. Repeating the request on the batch root preserves its timestamp.
+         */
+        post: operations["trashFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/folders/{folderId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore a folder's Trash batch to a private location
+         * @description The owner restores the folder and items from the same Trash batch. An active, private former parent is preferred, otherwise the owner's root is used. An exact folder name conflict at the destination is resolved with the first available ` - khôi phục` suffix (` - khôi phục 2`, ` - khôi phục 3`, and so on). Repeating a restore on an active folder returns its current state. IDs, objects and quota are preserved. Independently trashed descendants remain in Trash and revoked grants are not restored.
+         */
+        post: operations["restoreFolder"];
         delete?: never;
         options?: never;
         head?: never;
@@ -230,8 +270,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List the signed-in user's files in Trash
-         * @description Items are ordered by newest trashedAt, then by ID in ascending order. A page past the last result returns an empty items array.
+         * List Trash items for the signed-in user
+         * @description By default, returns independently trashed files for existing clients. Set includeFolders to true to paginate independently trashed files and folder batch roots in one ordered list. Items are ordered by newest trashedAt, then by ID in ascending order. A page past the last result has an empty items array.
          */
         get: operations["listTrash"];
         put?: never;
@@ -424,7 +464,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        /** @description Trimmed display name. Exact case-sensitive sibling names must be unique for the same owner, including in the root. */
+        /** @description Trimmed display name. Exact case-sensitive active sibling names must be unique for the same owner, including in the root. */
         FolderName: string;
         CreateFolderRequest: {
             name: components["schemas"]["FolderName"];
@@ -509,10 +549,27 @@ export interface components {
             };
             pagination: components["schemas"]["Pagination"];
         };
-        TrashItem: components["schemas"]["FileSummary"] & {
+        TrashedFileItem: components["schemas"]["FileSummary"] & {
             /** Format: date-time */
             trashedAt: string;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "file";
         };
+        TrashedFolderItem: components["schemas"]["FolderSummary"] & {
+            /** Format: date-time */
+            trashedAt: string;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "folder";
+        };
+        TrashItem: components["schemas"]["TrashedFileItem"] | components["schemas"]["TrashedFolderItem"];
         TrashListResponse: {
             success: components["schemas"]["Success"];
             data: {
@@ -535,6 +592,25 @@ export interface components {
                  * @description File's resulting parent. Null means the owner's root.
                  */
                 folderId: string | null;
+                originalName: components["schemas"]["FileName"];
+            };
+        };
+        FolderTrashStateResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                /** Format: uuid */
+                id: string;
+                /**
+                 * Format: date-time
+                 * @description Time moved to Trash, or null when active.
+                 */
+                trashedAt: string | null;
+                /**
+                 * Format: uuid
+                 * @description Folder's resulting parent. Null means the owner's root.
+                 */
+                parentId: string | null;
+                name: components["schemas"]["FolderName"];
             };
         };
         UpdateFileRequest: {
@@ -644,6 +720,16 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["FileTrashStateResponse"];
+            };
+        };
+        /** @description Current Trash state of the folder after the operation. */
+        FolderTrashState: {
+            headers: {
+                "Cache-Control": components["headers"]["PrivateCache"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["FolderTrashStateResponse"];
             };
         };
         /** @description A path, query, or body field is invalid. */
@@ -841,6 +927,7 @@ export interface components {
     };
     parameters: {
         FolderId: components["schemas"]["FolderReference"];
+        FolderUuid: string;
         FileId: string;
         Page: number;
         Limit: number;
@@ -1230,11 +1317,50 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
+    trashFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderId: components["parameters"]["FolderUuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["FolderTrashState"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    restoreFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderId: components["parameters"]["FolderUuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["FolderTrashState"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
     listTrash: {
         parameters: {
             query?: {
                 page?: components["parameters"]["Page"];
                 limit?: components["parameters"]["Limit"];
+                includeFolders?: boolean;
             };
             header?: never;
             path?: never;
@@ -1242,7 +1368,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description A page of files in the signed-in user's Trash. */
+            /** @description A page of independently trashed items in the signed-in user's Trash. */
             200: {
                 headers: {
                     "Cache-Control": components["headers"]["PrivateCache"];

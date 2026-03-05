@@ -23,6 +23,8 @@ type UpdateFileResponse = operations['updateFile']['responses'][200]['content'][
 type TrashListResponse = operations['listTrash']['responses'][200]['content']['application/json'];
 type TrashResponse = operations['trashFile']['responses'][200]['content']['application/json'];
 type RestoreResponse = operations['restoreFile']['responses'][200]['content']['application/json'];
+type FolderTrashResponse = operations['trashFolder']['responses'][200]['content']['application/json'];
+type FolderRestoreResponse = operations['restoreFolder']['responses'][200]['content']['application/json'];
 type FileDetailResponse = operations['getFile']['responses'][200]['content']['application/json'];
 type FileSharesResponse = operations['listFileShares']['responses'][200]['content']['application/json'];
 type FolderSharesResponse = operations['listFolderShares']['responses'][200]['content']['application/json'];
@@ -102,7 +104,7 @@ export async function updateFile(fileId: string, changes: UpdateFileRequest, sig
 }
 
 export function listTrash(page: number, signal: AbortSignal) {
-  return json<TrashListResponse>(`/trash?page=${page}`, { signal });
+  return json<TrashListResponse>(`/trash?page=${page}&includeFolders=true`, { signal });
 }
 
 export async function trashFile(fileId: string, signal: AbortSignal) {
@@ -113,6 +115,14 @@ export async function trashFile(fileId: string, signal: AbortSignal) {
 export async function restoreFile(fileId: string, signal: AbortSignal) {
   const result = await json<RestoreResponse>(`/files/${encodeURIComponent(fileId)}/restore`, { method: 'POST', signal });
   return result.data;
+}
+
+export async function trashFolder(folderId: string, signal: AbortSignal) {
+  return (await json<FolderTrashResponse>(`/folders/${encodeURIComponent(folderId)}/trash`, { method: 'POST', signal })).data;
+}
+
+export async function restoreFolder(folderId: string, signal: AbortSignal) {
+  return (await json<FolderRestoreResponse>(`/folders/${encodeURIComponent(folderId)}/restore`, { method: 'POST', signal })).data;
 }
 
 export async function getFile(fileId: string, signal: AbortSignal) {

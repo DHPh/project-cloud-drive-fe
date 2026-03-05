@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
   title: Cloud Drive API
-  version: 0.5.0
+  version: 0.6.0
   description: >-
-    Browser API for sign-in, folder management, upload, file editing, download, file trash, and file and folder sharing.
+    Browser API for sign-in, folder management, upload, file editing, download, file and folder trash, and sharing.
     State-changing browser requests require the configured application Origin.
 servers:
   - url: /api/v1
@@ -432,10 +432,12 @@ paths:
       tags: [Trash]
       summary: Restore a file to a private location
       description: >-
-        The owner restores an active file to its original location when that location is private.
-        If its original folder or an ancestor has an unexpired grant, it restores to the owner's root.
+        The owner restores a trashed file to its original active, private location, or to the owner's root
+        if that location is unavailable or shared. If an active file at the destination already has
+        the exact name, the restored file receives the first available ` - khôi phục` suffix (` - khôi phục 2`,
+        ` - khôi phục 3`, and so on), inserted before the final extension if present.
         Repeating the request on an active file returns the same active state.
-        File ID, object and storage usage are preserved. The response includes the resulting folderId.
+        File ID, object and storage usage are preserved. The response includes the resulting folderId and originalName.
         Restoring a file does not restore sharing grants.
       parameters:
         - $ref: '#/components/parameters/FileId'
@@ -452,20 +454,76 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /folders/{folderId}/trash:
+    post:
+      operationId: trashFolder
+      tags: [Trash]
+      summary: Move a folder and its active descendants to Trash
+      description: >-
+        The owner moves an active folder and its active descendants to Trash as a single item.
+        This atomically revokes direct file and folder grants for the affected items. Independently
+        trashed items stay separate. Repeating the request on the batch root preserves its timestamp.
+      parameters:
+        - $ref: '#/components/parameters/FolderUuid'
+      responses:
+        '200':
+          $ref: '#/components/responses/FolderTrashState'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /folders/{folderId}/restore:
+    post:
+      operationId: restoreFolder
+      tags: [Trash]
+      summary: Restore a folder's Trash batch to a private location
+      description: >-
+        The owner restores the folder and items from the same Trash batch. An active, private former parent
+        is preferred, otherwise the owner's root is used. An exact folder name conflict at the destination
+        is resolved with the first available ` - khôi phục` suffix (` - khôi phục 2`, ` - khôi phục 3`, and so on).
+        Repeating a restore on an active folder returns its current state. IDs, objects and quota are preserved.
+        Independently trashed descendants remain in Trash and revoked grants are not restored.
+      parameters:
+        - $ref: '#/components/parameters/FolderUuid'
+      responses:
+        '200':
+          $ref: '#/components/responses/FolderTrashState'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /trash:
     get:
       operationId: listTrash
       tags: [Trash]
-      summary: List the signed-in user's files in Trash
+      summary: List Trash items for the signed-in user
       description: >-
-        Items are ordered by newest trashedAt, then by ID in ascending order.
-        A page past the last result returns an empty items array.
+        By default, returns independently trashed files for existing clients. Set includeFolders to true
+        to paginate independently trashed files and folder batch roots in one ordered list. Items are ordered
+        by newest trashedAt, then by ID in ascending order. A page past the last result has an empty items array.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
+        - in: query
+          name: includeFolders
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
-          description: A page of files in the signed-in user's Trash.
+          description: A page of independently trashed items in the signed-in user's Trash.
           headers:
             Cache-Control:
               $ref: '#/components/headers/PrivateCache'
@@ -768,6 +826,13 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/FolderReference'
+    FolderUuid:
+      name: folderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     FileId:
       name: fileId
       in: path
@@ -824,6 +889,15 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/FileTrashStateResponse'
+    FolderTrashState:
+      description: Current Trash state of the folder after the operation.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FolderTrashStateResponse'
     InvalidRequest:
       description: A path, query, or body field is invalid.
       headers:
@@ -1055,8 +1129,8 @@ components:
       minLength: 1
       maxLength: 255
       description: >-
-        Trimmed display name. Exact case-sensitive sibling names must be unique
-        for the same owner, including in the root.
+        Trimmed display name. Exact case-sensitive active sibling names must be
+        unique for the same owner, including in the root.
     CreateFolderRequest:
       type: object
       additionalProperties: false
@@ -1213,7 +1287,7 @@ components:
                 $ref: '#/components/schemas/FolderItem'
         pagination:
           $ref: '#/components/schemas/Pagination'
-    TrashItem:
+    TrashedFileItem:
       allOf:
         - $ref: '#/components/schemas/FileSummary'
         - type: object
@@ -1222,6 +1296,24 @@ components:
             trashedAt:
               type: string
               format: date-time
+    TrashedFolderItem:
+      allOf:
+        - $ref: '#/components/schemas/FolderSummary'
+        - type: object
+          required: [trashedAt]
+          properties:
+            trashedAt:
+              type: string
+              format: date-time
+    TrashItem:
+      oneOf:
+        - $ref: '#/components/schemas/TrashedFileItem'
+        - $ref: '#/components/schemas/TrashedFolderItem'
+      discriminator:
+        propertyName: kind
+        mapping:
+          file: '#/components/schemas/TrashedFileItem'
+          folder: '#/components/schemas/TrashedFolderItem'
     TrashListResponse:
       type: object
       required: [success, data, pagination]
@@ -1246,7 +1338,7 @@ components:
           $ref: '#/components/schemas/Success'
         data:
           type: object
-          required: [id, trashedAt, folderId]
+          required: [id, trashedAt, folderId, originalName]
           properties:
             id:
               type: string
@@ -1261,6 +1353,33 @@ components:
               format: uuid
               nullable: true
               description: File's resulting parent. Null means the owner's root.
+            originalName:
+              $ref: '#/components/schemas/FileName'
+    FolderTrashStateResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [id, trashedAt, parentId, name]
+          properties:
+            id:
+              type: string
+              format: uuid
+            trashedAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: Time moved to Trash, or null when active.
+            parentId:
+              type: string
+              format: uuid
+              nullable: true
+              description: Folder's resulting parent. Null means the owner's root.
+            name:
+              $ref: '#/components/schemas/FolderName'
     UpdateFileRequest:
       type: object
       minProperties: 1
