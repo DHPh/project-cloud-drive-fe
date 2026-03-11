@@ -213,7 +213,7 @@ export interface paths {
         put?: never;
         /**
          * Restore a file to a private location
-         * @description The owner restores a trashed file to its original active, private location, or to the owner's root if that location is unavailable or shared. If an active file at the destination already has the exact name, the restored file receives the first available ` - khôi phục` suffix (` - khôi phục 2`, ` - khôi phục 3`, and so on), inserted before the final extension if present. Repeating the request on an active file returns the same active state. File ID, object and storage usage are preserved. The response includes the resulting folderId and originalName. Restoring a file does not restore sharing grants.
+         * @description The owner restores a trashed file to its original active, private location, or to the owner's root if that location is unavailable or shared. If an active file at the destination already has the exact name, the restored file receives the first available ` - khôi phục` suffix (` - khôi phục 2`, ` - khôi phục 3`, and so on), inserted before the final extension if present. Repeating the request on an active file returns the same active state. File ID, object and storage usage are preserved. The response includes the resulting folderId and originalName. Restoring a file does not restore sharing grants. Clients can send the Trash event ID to protect the action against a later Trash event.
          */
         post: operations["restoreFile"];
         delete?: never;
@@ -253,7 +253,7 @@ export interface paths {
         put?: never;
         /**
          * Restore a folder's Trash batch to a private location
-         * @description The owner restores the folder and items from the same Trash batch. An active, private former parent is preferred, otherwise the owner's root is used. An exact folder name conflict at the destination is resolved with the first available ` - khôi phục` suffix (` - khôi phục 2`, ` - khôi phục 3`, and so on). Repeating a restore on an active folder returns its current state. IDs, objects and quota are preserved. Independently trashed descendants remain in Trash and revoked grants are not restored.
+         * @description The owner restores the folder and items from the same Trash batch. An active, private former parent is preferred, otherwise the owner's root is used. An exact folder name conflict at the destination is resolved with the first available ` - khôi phục` suffix (` - khôi phục 2`, ` - khôi phục 3`, and so on). Repeating a restore on an active folder returns its current state. IDs, objects and quota are preserved. Independently trashed descendants remain in Trash and revoked grants are not restored. Clients can send the Trash event ID to protect the action against a later Trash event.
          */
         post: operations["restoreFolder"];
         delete?: never;
@@ -271,11 +271,51 @@ export interface paths {
         };
         /**
          * List Trash items for the signed-in user
-         * @description By default, returns independently trashed files for existing clients. Set includeFolders to true to paginate independently trashed files and folder batch roots in one ordered list. Items are ordered by newest trashedAt, then by ID in ascending order. A page past the last result has an empty items array.
+         * @description By default, returns independently trashed files for existing clients. Set includeFolders to true to paginate independently trashed files and folder batch roots in one ordered list. Items are ordered by newest trashedAt, then by ID in ascending order. A page past the last result has an empty items array. The summary covers the whole account regardless of paging or folder inclusion.
          */
         get: operations["listTrash"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trash/{kind}/{itemId}/purge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept one Trash event for permanent deletion
+         * @description Only the owner may submit a Trash event. Accepting it ends the ability to restore it. For a folder, only the members of the selected Trash event are deleted. Repeat submissions of an accepted event return the same count. An event that was restored or replaced is stale.
+         */
+        post: operations["purgeTrashItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trash/empty": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept the current recoverable Trash entries for permanent deletion
+         * @description The backend captures entries at acceptance, excluding entries already being processed. Reusing the same owner-scoped requestId returns its original count and does not include later entries.
+         */
+        post: operations["emptyTrash"];
         delete?: never;
         options?: never;
         head?: never;
@@ -549,31 +589,70 @@ export interface components {
             };
             pagination: components["schemas"]["Pagination"];
         };
-        TrashedFileItem: components["schemas"]["FileSummary"] & {
-            /** Format: date-time */
-            trashedAt: string;
-        } & {
+        TrashedFileItem: components["schemas"]["FileSummary"] & components["schemas"]["TrashEvent"] & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
             kind: "file";
         };
-        TrashedFolderItem: components["schemas"]["FolderSummary"] & {
-            /** Format: date-time */
-            trashedAt: string;
-        } & {
+        TrashedFolderItem: components["schemas"]["FolderSummary"] & components["schemas"]["TrashEvent"] & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
             kind: "folder";
         };
+        TrashEvent: {
+            /** Format: date-time */
+            trashedAt: string;
+            /**
+             * Format: uuid
+             * @description Unique ID of this event. Moving the same resource back to Trash creates a new event.
+             */
+            trashEventId: string;
+            /**
+             * Format: date-time
+             * @description Earliest automatic deletion time, or null until automatic retention is activated.
+             */
+            deleteAfter: string | null;
+            /** @enum {string} */
+            purgeStatus: "available" | "purging" | "retrying";
+        };
+        TrashEventRequest: {
+            /** Format: uuid */
+            trashEventId: string;
+        };
+        EmptyTrashRequest: {
+            /**
+             * Format: uuid
+             * @description A client-generated ID reused for retries of this confirmation.
+             */
+            requestId: string;
+        };
+        TrashPurgeAcceptedResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                /** @description Count of explicit Trash entries accepted in the original request. */
+                acceptedCount: number;
+            };
+        };
+        TrashSummary: {
+            /**
+             * Format: int64
+             * @description Bytes still charged for stored file items in Trash or accepted for permanent deletion.
+             */
+            remainingBytes: number;
+            recoverableCount: number;
+            purgingCount: number;
+            retryingCount: number;
+        };
         TrashItem: components["schemas"]["TrashedFileItem"] | components["schemas"]["TrashedFolderItem"];
         TrashListResponse: {
             success: components["schemas"]["Success"];
             data: {
                 items: components["schemas"]["TrashItem"][];
+                summary: components["schemas"]["TrashSummary"];
             };
             pagination: components["schemas"]["Pagination"];
         };
@@ -730,6 +809,26 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["FolderTrashStateResponse"];
+            };
+        };
+        /** @description DELETE_IN_PROGRESS indicates the Trash event has already been accepted for deletion and cannot be restored. STALE_TRASH_EVENT indicates a Trash event no longer matches the selected item. */
+        TrashConflict: {
+            headers: {
+                "Cache-Control": components["headers"]["PrivateCache"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Accepted for asynchronous deletion. This response does not confirm object removal or quota release. */
+        TrashPurgeAccepted: {
+            headers: {
+                "Cache-Control": components["headers"]["PrivateCache"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["TrashPurgeAcceptedResponse"];
             };
         };
         /** @description A path, query, or body field is invalid. */
@@ -1307,13 +1406,18 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TrashEventRequest"];
+            };
+        };
         responses: {
             200: components["responses"]["FileTrashState"];
             400: components["responses"]["InvalidRequest"];
             401: components["responses"]["SessionRequired"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["TrashConflict"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -1345,13 +1449,18 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TrashEventRequest"];
+            };
+        };
         responses: {
             200: components["responses"]["FolderTrashState"];
             400: components["responses"]["InvalidRequest"];
             401: components["responses"]["SessionRequired"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["TrashConflict"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -1380,6 +1489,51 @@ export interface operations {
             };
             400: components["responses"]["InvalidRequest"];
             401: components["responses"]["SessionRequired"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    purgeTrashItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "file" | "folder";
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrashEventRequest"];
+            };
+        };
+        responses: {
+            202: components["responses"]["TrashPurgeAccepted"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["TrashConflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    emptyTrash: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmptyTrashRequest"];
+            };
+        };
+        responses: {
+            202: components["responses"]["TrashPurgeAccepted"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
             500: components["responses"]["InternalError"];
         };
     };

@@ -25,6 +25,10 @@ type TrashResponse = operations['trashFile']['responses'][200]['content']['appli
 type RestoreResponse = operations['restoreFile']['responses'][200]['content']['application/json'];
 type FolderTrashResponse = operations['trashFolder']['responses'][200]['content']['application/json'];
 type FolderRestoreResponse = operations['restoreFolder']['responses'][200]['content']['application/json'];
+type PurgeResponse = operations['purgeTrashItem']['responses'][202]['content']['application/json'];
+type EmptyTrashResponse = operations['emptyTrash']['responses'][202]['content']['application/json'];
+type TrashEventRequest = operations['purgeTrashItem']['requestBody']['content']['application/json'];
+type EmptyTrashRequest = operations['emptyTrash']['requestBody']['content']['application/json'];
 type FileDetailResponse = operations['getFile']['responses'][200]['content']['application/json'];
 type FileSharesResponse = operations['listFileShares']['responses'][200]['content']['application/json'];
 type FolderSharesResponse = operations['listFolderShares']['responses'][200]['content']['application/json'];
@@ -64,7 +68,7 @@ async function json<Response>(path: string, options?: RequestInit): Promise<Resp
   return (await request(path, options)).json();
 }
 
-function jsonOptions(method: 'POST' | 'PATCH', body: LoginRequest | UpdateFileRequest | CreateFolderRequest | UpdateFolderRequest, signal?: AbortSignal): RequestInit {
+function jsonOptions(method: 'POST' | 'PATCH', body: LoginRequest | UpdateFileRequest | CreateFolderRequest | UpdateFolderRequest | TrashEventRequest | EmptyTrashRequest, signal?: AbortSignal): RequestInit {
   return { method, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' }, signal };
 }
 
@@ -112,8 +116,8 @@ export async function trashFile(fileId: string, signal: AbortSignal) {
   return result.data;
 }
 
-export async function restoreFile(fileId: string, signal: AbortSignal) {
-  const result = await json<RestoreResponse>(`/files/${encodeURIComponent(fileId)}/restore`, { method: 'POST', signal });
+export async function restoreFile(fileId: string, trashEventId: string, signal: AbortSignal) {
+  const result = await json<RestoreResponse>(`/files/${encodeURIComponent(fileId)}/restore`, jsonOptions('POST', { trashEventId }, signal));
   return result.data;
 }
 
@@ -121,8 +125,17 @@ export async function trashFolder(folderId: string, signal: AbortSignal) {
   return (await json<FolderTrashResponse>(`/folders/${encodeURIComponent(folderId)}/trash`, { method: 'POST', signal })).data;
 }
 
-export async function restoreFolder(folderId: string, signal: AbortSignal) {
-  return (await json<FolderRestoreResponse>(`/folders/${encodeURIComponent(folderId)}/restore`, { method: 'POST', signal })).data;
+export async function restoreFolder(folderId: string, trashEventId: string, signal: AbortSignal) {
+  return (await json<FolderRestoreResponse>(`/folders/${encodeURIComponent(folderId)}/restore`, jsonOptions('POST', { trashEventId }, signal))).data;
+}
+
+export async function purgeTrashItem(item: Pick<TrashItem, 'id' | 'kind' | 'trashEventId'>, signal: AbortSignal) {
+  const result = await json<PurgeResponse>(`/trash/${item.kind}/${encodeURIComponent(item.id)}/purge`, jsonOptions('POST', { trashEventId: item.trashEventId }, signal));
+  return result.data;
+}
+
+export async function emptyTrash(requestId: string, signal: AbortSignal) {
+  return (await json<EmptyTrashResponse>('/trash/empty', jsonOptions('POST', { requestId }, signal))).data;
 }
 
 export async function getFile(fileId: string, signal: AbortSignal) {

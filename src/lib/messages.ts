@@ -44,6 +44,15 @@ const vi = {
   fileRestoredToRoot: 'Đã khôi phục tệp về Drive của tôi để giữ riêng tư.',
   folderRestored: 'Đã khôi phục thư mục.', folderRestoredToRoot: 'Đã khôi phục thư mục về Drive của tôi.',
   renamedOnRestore: 'Đã dùng tên mới vì đích khôi phục có mục trùng tên.', openRestoreDestination: 'Mở vị trí khôi phục',
+  deletePermanently: 'Xóa vĩnh viễn', emptyTrash: 'Dọn Thùng rác', submittingPurge: 'Đang gửi yêu cầu…',
+  permanentFileDescription: 'Tệp mất khả năng khôi phục ngay khi hệ thống ghi nhận lệnh xóa.',
+  permanentFolderDescription: 'Lệnh xóa áp dụng cho thư mục và nội dung đã vào Thùng rác cùng lần. Những mục này mất khả năng khôi phục khi hệ thống ghi nhận lệnh.',
+  emptyTrashDescription: 'Lệnh dọn áp dụng cho mọi mục còn khôi phục được tại thời điểm hệ thống ghi nhận, kể cả những mục ở trang khác. Từ thời điểm đó các mục mất khả năng khôi phục.',
+  trashAvailable: 'Có thể khôi phục', trashPurging: 'Đang xóa', trashRetrying: 'Đang thử lại',
+  trashRemainingBytes: 'Dung lượng còn tính trong Thùng rác', trashSummary: 'Tình trạng Thùng rác',
+  trashExpires: 'Dự kiến dọn', trashExpiryUnset: 'Chưa có lịch dọn', trashTimeZone: 'giờ Việt Nam',
+  purgeAccepted: (count: string) => `Đã nhận yêu cầu xóa vĩnh viễn ${count} mục.`, purgeNoNew: 'Thùng rác không còn mục mới để đưa vào xử lý.',
+  deleteInProgress: 'Mục này đang được xóa vĩnh viễn.', staleTrashEvent: 'Mục này đã thay đổi trong Thùng rác. Hãy kiểm tra trạng thái mới.',
   share: 'Chia sẻ', shareTitle: 'Chia sẻ tệp',
   shareFolderTitle: 'Chia sẻ thư mục', shareFolderDescription: 'Người được cấp quyền có thể xem nội dung và tải tệp trong thư mục này.',
   shareDescription: 'Người nhận cần đăng nhập bằng tài khoản được cấp quyền để xem và tải xuống.',
@@ -78,7 +87,8 @@ const vi = {
   refresh: 'Tải lại', language: 'Ngôn ngữ', skip: 'Đến nội dung chính', offline: 'Bạn đang ngoại tuyến.',
 };
 
-type Dictionary = { [Key in keyof typeof vi]: string };
+type Dictionary = typeof vi;
+type TextKey = { [Key in keyof Dictionary]: Dictionary[Key] extends string ? Key : never }[keyof Dictionary];
 const en: Dictionary = {
   app: 'Cloud Drive', myDrive: 'My Drive', home: 'Home', search: 'Search in Drive', searchPlaceholder: 'Search',
   newItem: 'New', upload: 'Upload files', folder: 'Folder', folders: 'Folders', files: 'Files',
@@ -123,6 +133,15 @@ const en: Dictionary = {
   fileRestoredToRoot: 'File restored to My Drive to keep it private.',
   folderRestored: 'Folder restored.', folderRestoredToRoot: 'Folder restored to My Drive.',
   renamedOnRestore: 'A new name was used because an item with the same name already exists.', openRestoreDestination: 'Open restore location',
+  deletePermanently: 'Delete permanently', emptyTrash: 'Empty Trash', submittingPurge: 'Submitting request…',
+  permanentFileDescription: 'The file can no longer be restored once this deletion request is accepted.',
+  permanentFolderDescription: 'This deletes the folder and contents moved to Trash with it. These items can no longer be restored once the request is accepted.',
+  emptyTrashDescription: 'This applies to all items that can be restored when the request is accepted, including items on other pages. These items can no longer be restored from that point.',
+  trashAvailable: 'Available to restore', trashPurging: 'Deleting', trashRetrying: 'Retrying',
+  trashRemainingBytes: 'Storage still counted in Trash', trashSummary: 'Trash status',
+  trashExpires: 'Scheduled purge', trashExpiryUnset: 'Purge not scheduled', trashTimeZone: 'Vietnam time',
+  purgeAccepted: (count) => `Permanent deletion accepted for ${count} ${count === '1' ? 'item' : 'items'}.`, purgeNoNew: 'There are no new items to queue for deletion.',
+  deleteInProgress: 'This item is being permanently deleted.', staleTrashEvent: 'This item has changed in Trash. Check its latest status.',
   share: 'Share', shareTitle: 'Share file',
   shareFolderTitle: 'Share folder', shareFolderDescription: 'People you grant access to can view contents and download files in this folder.',
   shareDescription: 'Recipients must sign in with the account you grant access to before viewing or downloading.',
@@ -160,12 +179,13 @@ const en: Dictionary = {
 export type Locale = 'vi' | 'en';
 export const dictionaries = { vi, en };
 
-const errorMessages: Record<string, keyof Dictionary> = {
+const errorMessages: Record<string, TextKey> = {
   INVALID_CREDENTIALS: 'invalidCredentials', INVALID_REQUEST: 'invalidRequest', SESSION_REQUIRED: 'sessionTitle',
   FORBIDDEN: 'forbidden', NOT_FOUND: 'notFound', STORAGE_QUOTA_EXCEEDED: 'quota', FILE_TOO_LARGE: 'fileTooLarge',
   UNSUPPORTED_MEDIA_TYPE: 'unsupported', RATE_LIMITED: 'rateLimited', STORAGE_UNAVAILABLE: 'storageUnavailable',
   UPLOAD_UNKNOWN: 'uploadUnknown', RECIPIENT_NOT_FOUND: 'recipientNotFound',
   FOLDER_NAME_CONFLICT: 'folderNameConflict', INVALID_FOLDER_MOVE: 'invalidFolderMove',
+  DELETE_IN_PROGRESS: 'deleteInProgress', STALE_TRASH_EVENT: 'staleTrashEvent',
 };
 
 export function localizedError(error: unknown, dictionary: Dictionary) {

@@ -12,9 +12,10 @@ import { driveHref, pageNumber, trashHref } from '@/lib/routes';
 import { useAccountSession } from '../account-session';
 import { DriveLayout } from '../drive/drive-layout';
 import { useLocale } from '../providers';
+import { PurgeDialog, type PurgeIntent } from './purge-dialog';
 
 function itemKey(item: TrashItem) {
-  return `${item.kind}-${item.id}`;
+  return `${item.kind}-${item.id}-${item.trashEventId}`;
 }
 
 export function TrashScreen({ initialUser }: { initialUser: User }) {
@@ -26,6 +27,9 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
   const [restoring, setRestoring] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<{ id: string; message: string } | null>(null);
   const [notice, setNotice] = useState<{ message: string; name: string; destinationId: string | null; renamed: boolean } | null>(null);
+  const [purgeIntent, setPurgeIntent] = useState<PurgeIntent | null>(null);
+  const [purgeNotice, setPurgeNotice] = useState<number | null>(null);
+  const [verifyAfter, setVerifyAfter] = useState(0);
   const request = useRef<AbortController | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const nextFocus = useRef<{ page: number; id: string | null } | null>(null);
@@ -36,12 +40,22 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
     queryFn: ({ signal }) => listTrash(page, signal),
     enabled: !expired,
     placeholderData: keepPreviousData,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
+    refetchInterval: ({ state }) => {
+      const current = state.data?.data;
+      if (!current) return false;
+      return current.summary.purgingCount + current.summary.retryingCount > 0 ? 2500 : false;
+    },
   });
-  const { data, isPlaceholderData } = query;
+  const { data, isPlaceholderData, dataUpdatedAt, refetch } = query;
   const items = data?.data.items ?? [];
+  const summary = data?.data.summary;
   const lastPage = Math.max(1, data?.pagination.totalPages ?? 1);
   const shouldMovePage = Boolean(data && !isPlaceholderData && page > lastPage);
   const error = query.error && (!(query.error instanceof ApiError) || query.error.status !== 401) ? query.error : null;
+  const verifying = query.dataUpdatedAt <= verifyAfter || (!query.isFetchedAfterMount && query.isFetching);
+  const canAct = Boolean(data && !verifying && !isPlaceholderData && !query.error && !query.isPaused && !expired);
   const destinationId = notice?.destinationId;
   const destinationQuery = useQuery({
     queryKey: ['drive', user.id, destinationId, '', 1],
@@ -58,6 +72,14 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
   }, [query.error, expire]);
 
   useEffect(() => {
+    if (!data || isPlaceholderData || expired || data.data.summary.purgingCount + data.data.summary.retryingCount > 0) return;
+    const closestExpiry = data.data.items.reduce((closest, item) => item.deleteAfter === null ? closest : Math.min(closest, Date.parse(item.deleteAfter)), Infinity);
+    if (!Number.isFinite(closestExpiry)) return;
+    const timer = window.setTimeout(() => void refetch(), Math.min(Math.max(2500, closestExpiry - Date.now()), 2_147_483_647));
+    return () => window.clearTimeout(timer);
+  }, [data, dataUpdatedAt, expired, isPlaceholderData, refetch]);
+
+  useEffect(() => {
     if (shouldMovePage) window.history.replaceState(null, '', trashHref(lastPage));
   }, [shouldMovePage, lastPage]);
 
@@ -69,18 +91,32 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
     (button ?? heading.current)?.focus();
   }, [page, data, restoring, expired]);
 
+  function recheckTrash() {
+    const filters = { queryKey: ['trash', user.id] };
+    const latestCachedRead = queryClient.getQueryCache().findAll(filters).reduce((latest, entry) => Math.max(latest, entry.state.dataUpdatedAt), 0);
+    setVerifyAfter(latestCachedRead);
+    void queryClient.cancelQueries(filters).then(() => queryClient.invalidateQueries(filters));
+  }
+
+  function afterPurgeAccepted(count: number) {
+    recheckTrash();
+    setPurgeNotice(count);
+    setPurgeIntent(null);
+  }
+
   async function restore(item: TrashItem) {
-    if (request.current || isPlaceholderData || expired) return;
+    if (request.current || !canAct || item.purgeStatus !== 'available') return;
     const controller = new AbortController();
     const key = itemKey(item);
     request.current = controller;
     setRestoring(key);
     setRestoreError(null);
     setNotice(null);
+    setPurgeNotice(null);
     const originalParent = item.kind === 'folder' ? item.parentId : item.folderId;
     const originalName = item.kind === 'folder' ? item.name : item.originalName;
     try {
-      const result = item.kind === 'folder' ? await restoreFolder(item.id, controller.signal) : await restoreFile(item.id, controller.signal);
+      const result = item.kind === 'folder' ? await restoreFolder(item.id, item.trashEventId, controller.signal) : await restoreFile(item.id, item.trashEventId, controller.signal);
       if (controller.signal.aborted) return;
       const restoredParent = 'parentId' in result ? result.parentId : result.folderId;
       const restoredName = 'name' in result ? result.name : result.originalName;
@@ -113,7 +149,13 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
     } catch (failure) {
       if (!controller.signal.aborted) {
         if (failure instanceof ApiError && failure.status === 401) expire();
-        else setRestoreError({ id: key, message: localizedError(failure, text) });
+        else {
+          setRestoreError({ id: key, message: localizedError(failure, text) });
+          if (failure instanceof ApiError && failure.status === 409) {
+            heading.current?.focus();
+            recheckTrash();
+          }
+        }
       }
     } finally {
       request.current = null;
@@ -121,16 +163,39 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
     }
   }
 
-  const dateFormat = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+  const dateFormat = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' });
+  const numberFormat = new Intl.NumberFormat(locale);
   const totalPages = data?.pagination.totalPages ?? 0;
 
   return (
     <>
       <DriveLayout user={user} signingOut={signingOut} signOutError={signOutError} onSignOut={() => void signOut()}>
         <div className="mx-auto max-w-screen-2xl space-y-5 p-4 sm:p-6 lg:p-8">
-          <h1 id="trash-heading" ref={heading} tabIndex={-1} className="flex w-fit items-center gap-2 rounded-md px-1 py-1 text-lg font-semibold text-gray-900">
-            <TrashIcon aria-hidden="true" className="h-6 w-6 text-gray-600" />{text.trash}
-          </h1>
+          <header className="flex flex-wrap items-center justify-between gap-2">
+            <h1 id="trash-heading" ref={heading} tabIndex={-1} className="flex w-fit items-center gap-2 rounded-md px-1 py-1 text-lg font-semibold text-gray-900">
+              <TrashIcon aria-hidden="true" className="h-6 w-6 text-gray-600" />{text.trash}
+            </h1>
+            {canAct && summary && summary.recoverableCount > 0 && (
+              <button type="button" data-testid="trash-empty-open" className="button button-danger min-h-11" disabled={Boolean(restoring)} onClick={(event) => {
+                setPurgeNotice(null);
+                setNotice(null);
+                setPurgeIntent({ kind: 'empty', requestId: crypto.randomUUID(), trigger: event.currentTarget });
+              }}>{text.emptyTrash}</button>
+            )}
+          </header>
+          {summary && !expired && (
+            <section aria-label={text.trashSummary} data-testid="trash-summary" className="panel p-3 sm:p-4">
+              <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4" aria-live="polite">
+                <div className="min-w-0"><dt className="text-gray-600">{text.trashRemainingBytes}</dt><dd data-testid="trash-remaining-bytes" className="mt-1 font-semibold tabular-nums">{readableSize(summary.remainingBytes, locale)}</dd></div>
+                <div><dt className="text-gray-600">{text.trashAvailable}</dt><dd data-testid="trash-available-count" className="mt-1 font-medium tabular-nums">{numberFormat.format(summary.recoverableCount)}</dd></div>
+                <div><dt className="text-gray-600">{text.trashPurging}</dt><dd data-testid="trash-purging-count" className="mt-1 font-medium tabular-nums">{numberFormat.format(summary.purgingCount)}</dd></div>
+                <div><dt className="text-gray-600">{text.trashRetrying}</dt><dd data-testid="trash-retrying-count" className="mt-1 font-medium tabular-nums">{numberFormat.format(summary.retryingCount)}</dd></div>
+              </dl>
+            </section>
+          )}
+          <p role="status" data-testid="trash-purge-notice" className={purgeNotice !== null ? 'rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-900' : 'sr-only'}>
+            {purgeNotice !== null && (purgeNotice > 0 ? text.purgeAccepted(numberFormat.format(purgeNotice)) : text.purgeNoNew)}
+          </p>
           <div className={notice ? 'space-y-1 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900' : 'sr-only'}>
             <p role="status" data-testid="trash-status" className="[overflow-wrap:anywhere]">
               {notice ? <>{notice.message} <strong data-testid="trash-restored-name">{notice.name}</strong>{notice.renamed && <> {text.renamedOnRestore}</>}</> : query.isFetching ? text.updating : ''}
@@ -157,32 +222,47 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
               <Link href="/drive" prefetch={false} className="button button-secondary">{text.backToDrive}</Link>
             </div>
           )}
-          {items.length > 0 && (
-            <ul aria-label={text.trash} aria-busy={query.isFetching} className="space-y-2">
+          {items.length > 0 && !expired && (
+            <ul aria-label={text.trash} aria-busy={query.isFetching || verifying} className="space-y-2">
               {items.map((item) => {
                 const key = itemKey(item);
                 const name = item.kind === 'folder' ? item.name : item.originalName;
+                const available = item.purgeStatus === 'available';
+                const status = item.purgeStatus === 'purging' ? text.trashPurging : item.purgeStatus === 'retrying' ? text.trashRetrying : canAct ? text.trashAvailable : text.updating;
                 return (
-                <li key={key} data-testid="trash-item" data-item-id={item.id} data-item-kind={item.kind} className="panel grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 px-2 py-2.5 sm:gap-x-3 sm:px-3">
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md sm:h-10 sm:w-10 ${item.kind === 'folder' ? 'bg-amber-50 text-amber-700' : 'bg-primary-100 text-primary-800'}`}>
-                    {item.kind === 'folder' ? <FolderIcon aria-hidden="true" className="h-6 w-6" /> : <DocumentIcon aria-hidden="true" className="h-6 w-6" />}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium [overflow-wrap:anywhere] sm:line-clamp-2" title={name}>{name}</p>
-                    <p className="mt-0.5 text-xs tabular-nums text-gray-600">
-                      {item.kind === 'folder' ? text.folder : readableSize(item.size, locale)} <span aria-hidden="true">·</span> <span className="sr-only sm:not-sr-only">{text.trashedOn} </span><time dateTime={item.trashedAt}>{dateFormat.format(new Date(item.trashedAt))}</time>
-                    </p>
-                  </div>
-                  <button
-                    id={`trash-restore-${key}`} data-testid="trash-restore" type="button" className="button button-secondary min-h-11 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
-                    aria-label={`${restoring === key ? text.restoring : text.restore}: ${name}`}
-                    aria-busy={restoring === key} aria-disabled={Boolean(restoring || isPlaceholderData || expired)} onClick={() => void restore(item)}
-                  >
-                    <ArrowUturnLeftIcon aria-hidden="true" className="h-4 w-4" />
-                    {restoring === key ? text.restoring : text.restore}
-                  </button>
-                  {restoreError?.id === key && <p role="alert" className="col-span-3 pt-2 text-sm text-red-800">{restoreError.message}</p>}
-                </li>
+                  <li key={key} data-testid="trash-item" data-item-id={item.id} data-item-kind={item.kind} data-purge-status={available && !canAct ? undefined : item.purgeStatus} className="panel grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 p-2.5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-3 sm:px-3">
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md sm:h-10 sm:w-10 ${item.kind === 'folder' ? 'bg-amber-50 text-amber-700' : 'bg-primary-100 text-primary-800'}`}>
+                      {item.kind === 'folder' ? <FolderIcon aria-hidden="true" className="h-6 w-6" /> : <DocumentIcon aria-hidden="true" className="h-6 w-6" />}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium [overflow-wrap:anywhere] sm:line-clamp-2" title={name}>{name}</p>
+                      <p className="mt-0.5 text-xs tabular-nums text-gray-600">
+                        {item.kind === 'folder' ? text.folder : readableSize(item.size, locale)} <span aria-hidden="true">·</span> <span className="sr-only sm:not-sr-only">{text.trashedOn} </span><time dateTime={item.trashedAt}>{dateFormat.format(new Date(item.trashedAt))}</time>
+                      </p>
+                      <p className="mt-1 text-xs text-gray-700" data-testid="trash-item-status">{status}</p>
+                      {item.deleteAfter ? (
+                        <p className="mt-0.5 text-xs text-gray-600">{text.trashExpires} <time data-testid="trash-expiry" dateTime={item.deleteAfter}>{dateFormat.format(new Date(item.deleteAfter))}</time> ({text.trashTimeZone})</p>
+                      ) : <p className="mt-0.5 text-xs text-gray-600">{text.trashExpiryUnset}</p>}
+                    </div>
+                    {available && canAct && (
+                      <div className="col-span-2 flex flex-wrap justify-end gap-2 sm:col-span-1">
+                        <button
+                          id={`trash-restore-${key}`} data-testid="trash-restore" type="button" className="button button-secondary min-h-11 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                          aria-label={`${restoring === key ? text.restoring : text.restore}: ${name}`}
+                          aria-busy={restoring === key} aria-disabled={Boolean(restoring)} onClick={() => void restore(item)}
+                        >
+                          <ArrowUturnLeftIcon aria-hidden="true" className="h-4 w-4" />
+                          {restoring === key ? text.restoring : text.restore}
+                        </button>
+                        <button type="button" data-testid="trash-purge-open" className="button button-secondary min-h-11 text-red-800" disabled={Boolean(restoring)} aria-label={`${text.deletePermanently} ${name}`} onClick={(event) => {
+                          setPurgeNotice(null);
+                          setNotice(null);
+                          setPurgeIntent({ kind: 'single', item, trigger: event.currentTarget });
+                        }}>{text.deletePermanently}</button>
+                      </div>
+                    )}
+                    {restoreError?.id === key && <p role="alert" className="col-span-2 text-sm text-red-800 sm:col-span-3">{restoreError.message}</p>}
+                  </li>
                 );
               })}
             </ul>
@@ -198,6 +278,10 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
           )}
         </div>
       </DriveLayout>
+      {purgeIntent && (
+        <PurgeDialog intent={purgeIntent} suspended={expired} onDismiss={() => setPurgeIntent(null)} onExpired={expire}
+          onAccepted={afterPurgeAccepted} onRecheck={recheckTrash} focusAfterClose={() => heading.current?.focus()} />
+      )}
       {sessionDialog}
     </>
   );

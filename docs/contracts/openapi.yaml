@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Cloud Drive API
-  version: 0.6.0
+  version: 0.7.0
   description: >-
     Browser API for sign-in, folder management, upload, file editing, download, file and folder trash, and sharing.
     State-changing browser requests require the configured application Origin.
@@ -439,8 +439,14 @@ paths:
         Repeating the request on an active file returns the same active state.
         File ID, object and storage usage are preserved. The response includes the resulting folderId and originalName.
         Restoring a file does not restore sharing grants.
+        Clients can send the Trash event ID to protect the action against a later Trash event.
       parameters:
         - $ref: '#/components/parameters/FileId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrashEventRequest'
       responses:
         '200':
           $ref: '#/components/responses/FileTrashState'
@@ -452,6 +458,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrashConflict'
         '500':
           $ref: '#/components/responses/InternalError'
   /folders/{folderId}/trash:
@@ -489,8 +497,14 @@ paths:
         is resolved with the first available ` - khôi phục` suffix (` - khôi phục 2`, ` - khôi phục 3`, and so on).
         Repeating a restore on an active folder returns its current state. IDs, objects and quota are preserved.
         Independently trashed descendants remain in Trash and revoked grants are not restored.
+        Clients can send the Trash event ID to protect the action against a later Trash event.
       parameters:
         - $ref: '#/components/parameters/FolderUuid'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrashEventRequest'
       responses:
         '200':
           $ref: '#/components/responses/FolderTrashState'
@@ -502,6 +516,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrashConflict'
         '500':
           $ref: '#/components/responses/InternalError'
   /trash:
@@ -513,6 +529,7 @@ paths:
         By default, returns independently trashed files for existing clients. Set includeFolders to true
         to paginate independently trashed files and folder batch roots in one ordered list. Items are ordered
         by newest trashedAt, then by ID in ascending order. A page past the last result has an empty items array.
+        The summary covers the whole account regardless of paging or folder inclusion.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -538,6 +555,74 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /trash/{kind}/{itemId}/purge:
+    post:
+      operationId: purgeTrashItem
+      tags: [Trash]
+      summary: Accept one Trash event for permanent deletion
+      description: >-
+        Only the owner may submit a Trash event. Accepting it ends the ability to restore it.
+        For a folder, only the members of the selected Trash event are deleted. Repeat submissions of an
+        accepted event return the same count. An event that was restored or replaced is stale.
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [file, folder]
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrashEventRequest'
+      responses:
+        '202':
+          $ref: '#/components/responses/TrashPurgeAccepted'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrashConflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /trash/empty:
+    post:
+      operationId: emptyTrash
+      tags: [Trash]
+      summary: Accept the current recoverable Trash entries for permanent deletion
+      description: >-
+        The backend captures entries at acceptance, excluding entries already being processed.
+        Reusing the same owner-scoped requestId returns its original count and does not include later entries.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyTrashRequest'
+      responses:
+        '202':
+          $ref: '#/components/responses/TrashPurgeAccepted'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /files/{fileId}/shares:
     get:
       operationId: listFileShares
@@ -898,6 +983,27 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/FolderTrashStateResponse'
+    TrashConflict:
+      description: >-
+        DELETE_IN_PROGRESS indicates the Trash event has already been accepted for deletion and cannot be restored.
+        STALE_TRASH_EVENT indicates a Trash event no longer matches the selected item.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    TrashPurgeAccepted:
+      description: >-
+        Accepted for asynchronous deletion. This response does not confirm object removal or quota release.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TrashPurgeAcceptedResponse'
     InvalidRequest:
       description: A path, query, or body field is invalid.
       headers:
@@ -1290,21 +1396,79 @@ components:
     TrashedFileItem:
       allOf:
         - $ref: '#/components/schemas/FileSummary'
-        - type: object
-          required: [trashedAt]
-          properties:
-            trashedAt:
-              type: string
-              format: date-time
+        - $ref: '#/components/schemas/TrashEvent'
     TrashedFolderItem:
       allOf:
         - $ref: '#/components/schemas/FolderSummary'
-        - type: object
-          required: [trashedAt]
+        - $ref: '#/components/schemas/TrashEvent'
+    TrashEvent:
+      type: object
+      required: [trashedAt, trashEventId, deleteAfter, purgeStatus]
+      properties:
+        trashedAt:
+          type: string
+          format: date-time
+        trashEventId:
+          type: string
+          format: uuid
+          description: Unique ID of this event. Moving the same resource back to Trash creates a new event.
+        deleteAfter:
+          type: string
+          format: date-time
+          nullable: true
+          description: Earliest automatic deletion time, or null until automatic retention is activated.
+        purgeStatus:
+          type: string
+          enum: [available, purging, retrying]
+    TrashEventRequest:
+      type: object
+      additionalProperties: false
+      required: [trashEventId]
+      properties:
+        trashEventId:
+          type: string
+          format: uuid
+    EmptyTrashRequest:
+      type: object
+      additionalProperties: false
+      required: [requestId]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+          description: A client-generated ID reused for retries of this confirmation.
+    TrashPurgeAcceptedResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [acceptedCount]
           properties:
-            trashedAt:
-              type: string
-              format: date-time
+            acceptedCount:
+              type: integer
+              minimum: 0
+              description: Count of explicit Trash entries accepted in the original request.
+    TrashSummary:
+      type: object
+      required: [remainingBytes, recoverableCount, purgingCount, retryingCount]
+      properties:
+        remainingBytes:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Bytes still charged for stored file items in Trash or accepted for permanent deletion.
+        recoverableCount:
+          type: integer
+          minimum: 0
+        purgingCount:
+          type: integer
+          minimum: 0
+        retryingCount:
+          type: integer
+          minimum: 0
     TrashItem:
       oneOf:
         - $ref: '#/components/schemas/TrashedFileItem'
@@ -1322,12 +1486,14 @@ components:
           $ref: '#/components/schemas/Success'
         data:
           type: object
-          required: [items]
+          required: [items, summary]
           properties:
             items:
               type: array
               items:
                 $ref: '#/components/schemas/TrashItem'
+            summary:
+              $ref: '#/components/schemas/TrashSummary'
         pagination:
           $ref: '#/components/schemas/Pagination'
     FileTrashStateResponse:
