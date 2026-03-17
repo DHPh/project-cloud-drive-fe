@@ -42,27 +42,33 @@ type NameProps<T> = {
   submitTestId: string;
   cancelTestId?: string;
   errorTestId?: string;
+  descriptionField?: { label: string; initialValue: string };
   suspended: boolean;
   trigger: HTMLElement | null;
   onDismiss: () => void;
   onSessionExpired: () => void;
-  save: (name: string, signal: AbortSignal) => Promise<T>;
+  save: (name: string, signal: AbortSignal, description?: string | null) => Promise<T>;
   onSaved: (item: T) => void | Promise<void>;
 };
 
 export function ItemNameDialog<T>({
   initialName, label, requiredMessage, discardMessage, title, description, submitLabel,
-  dialogTestId, inputId, inputTestId, submitTestId, cancelTestId, errorTestId,
+  dialogTestId, inputId, inputTestId, submitTestId, cancelTestId, errorTestId, descriptionField,
   suspended, trigger, onDismiss, onSessionExpired, save, onSaved,
 }: NameProps<T>) {
   const { text } = useLocale();
   const [name, setName] = useState(initialName);
+  const initialDescription = descriptionField?.initialValue ?? '';
+  const [descriptionText, setDescriptionText] = useState(initialDescription);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const descriptionInput = useRef<HTMLTextAreaElement>(null);
   const request = useRef<AbortController | null>(null);
-  const changed = name !== initialName;
+  const descriptionChanged = descriptionText !== initialDescription;
+  const changed = name.trim() !== initialName || descriptionChanged;
+  const dirty = name !== initialName || descriptionChanged;
   const errorId = `${inputId}-error`;
 
   useEffect(() => () => request.current?.abort(), []);
@@ -72,17 +78,22 @@ export function ItemNameDialog<T>({
     if (confirmLeave) {
       setConfirmLeave(false);
       input.current?.focus();
-    } else if (changed) setConfirmLeave(true);
+    } else if (dirty) setConfirmLeave(true);
     else onDismiss();
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (request.current || confirmLeave) return;
+    if (request.current || confirmLeave || !changed) return;
     const nextName = name.trim();
     if (!nextName) {
       setError(requiredMessage);
       input.current?.focus();
+      return;
+    }
+    if (descriptionChanged && [...descriptionText].length > 2000) {
+      setError(text.descriptionTooLong);
+      descriptionInput.current?.focus();
       return;
     }
     const controller = new AbortController();
@@ -90,7 +101,7 @@ export function ItemNameDialog<T>({
     setPending(true);
     setError(null);
     try {
-      const updated = await save(nextName, controller.signal);
+      const updated = await save(nextName, controller.signal, descriptionChanged ? descriptionText || null : undefined);
       if (controller.signal.aborted) return;
       await onSaved(updated);
       if (!controller.signal.aborted) onDismiss();
@@ -115,6 +126,14 @@ export function ItemNameDialog<T>({
             onChange={(event) => { setName(event.currentTarget.value); setError(null); }} required
             aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined}
           />
+          {descriptionField && (
+            <div className="space-y-2 pt-2">
+              <label htmlFor={`${inputId}-description`} className="block text-sm font-medium">{descriptionField.label}</label>
+              <textarea ref={descriptionInput} id={`${inputId}-description`} data-testid="folder-description-input" className="field min-h-24 resize-y" rows={3} maxLength={4000}
+                aria-invalid={error === text.descriptionTooLong} aria-describedby={error === text.descriptionTooLong ? errorId : undefined}
+                value={descriptionText} readOnly={pending} onChange={(event) => { setDescriptionText(event.currentTarget.value); setError(null); }} />
+            </div>
+          )}
           {error && <p id={errorId} data-testid={errorTestId} role="alert" className="text-sm text-red-800">{error}</p>}
           {confirmLeave && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">{discardMessage}</p>}
         </div>

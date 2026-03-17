@@ -1,6 +1,6 @@
 # Thiết kế UX frontend
 
-Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, TRASH-01, TRASH-02, TRASH-03, SHARE-01 và SHARE-02. Màn hình mới tiếp nối bố cục, theme, icon, breadcrumb và chế độ lưới/danh sách của Drive Nuxt. Đối chiếu desktop và mobile trên bản chạy với dữ liệu tổng hợp.
+Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, DRIVE-03, TRASH-01, TRASH-02, TRASH-03, SHARE-01 và SHARE-02. Màn hình mới tiếp nối bố cục, theme, icon, breadcrumb và chế độ lưới/danh sách của Drive Nuxt. Đối chiếu desktop và mobile trên bản chạy với dữ liệu tổng hợp.
 
 ## Drive
 
@@ -13,10 +13,19 @@ Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, TRASH-01, TRASH-02, TRASH-03, SHA
 
 ## Quản lý thư mục
 
-1. **Điểm vào.** **Mới → Tạo thư mục** tạo tại vị trí Drive đang mở. Hàng và thẻ thư mục có **Đổi tên** và **Di chuyển**. Link mở thư mục dùng ID nên giữ nguyên khi thư mục đổi tên hoặc đổi cha.
+1. **Điểm vào.** **Mới → Tạo thư mục** tạo tại vị trí Drive đang mở. Hàng và thẻ thư mục có **Đổi tên thư mục và sửa mô tả** từ DRIVE-03, cùng **Di chuyển**. Link mở thư mục dùng ID nên giữ nguyên khi thư mục đổi tên hoặc đổi cha. [Biểu mẫu và trạng thái DRIVE-03](#chi-tiết-tệp-và-metadata)
 2. **Chọn đích và quyền.** Hộp thoại di chuyển bắt đầu ở Drive gốc, dùng breadcrumb và danh sách chỉ gồm thư mục có phân trang. Lựa chọn đích và số trang thuộc hộp thoại. Thư mục nguồn và đường vào các thư mục con của nguồn không xuất hiện trong bộ chọn. **Chuyển tới đây** chỉ khả dụng khi đích đã tải và khác thư mục cha hiện tại. Backend kiểm tra quyền, tên trùng và vòng lặp.
 3. **Lỗi và kết quả.** Giữ tên hoặc đích đang chọn khi lỗi. Phân biệt đang tải đích, không có thư mục con, lỗi truy vấn có thể thử lại và lỗi lưu. Khi thành công, làm mới danh sách và breadcrumb thuộc tài khoản hiện tại. Giữ URL Drive và hiển thị link mở đích sau khi di chuyển.
-4. **Bàn phím và mobile.** Tạo/đổi tên đưa focus vào trường tên. Duyệt đích trong hộp thoại đưa focus đến tiêu đề đích. Khi hủy hoặc lưu tên, trả focus về nút mở nếu còn hiển thị. Sau khi di chuyển, focus về thao tác thư mục kế cận hoặc nội dung chính. Kiểm tra thao tác với bàn phím, tên dài, vùng bấm và phân trang desktop/mobile.
+4. **Bàn phím và mobile.** Tạo hoặc đổi tên đưa focus vào trường tên. Khi chuyển đích, đưa focus đến tiêu đề ngay khi tiêu đề đích xuất hiện. Giữ focus ở vị trí người dùng đã chọn khi danh sách trả về. Khi hủy hoặc lưu tên, trả focus về nút mở nếu còn hiển thị. Sau khi di chuyển, focus về thao tác thư mục kế cận hoặc nội dung chính. Kiểm tra thao tác với bàn phím, tên dài, vùng bấm và phân trang desktop/mobile.
+
+## Chi tiết tệp và metadata
+
+1. **Điểm vào và quay lại.** Tên tệp trong lưới và danh sách mở `/files/{id}`. Sau khi đọc được quyền, link quay về dẫn chủ sở hữu đến thư mục chứa tệp hoặc Drive gốc, người xem đến **Được chia sẻ với tôi**. Back/Forward dùng lịch sử trình duyệt để quay lại vị trí Drive, từ khóa, trang và chế độ xem đã mở.
+2. **Quyền và dữ liệu.** Chi tiết dùng `access` do API trả sau khi xác nhận quyền hiện hành. Chủ sở hữu có nút **Sửa mô tả và thẻ**. Người xem đọc metadata theo phạm vi chia sẻ. Trang hiển thị các trường có giá trị và ngắt dòng văn bản dài. Khóa truy vấn chi tiết gồm tài khoản và ID tệp. Biểu mẫu và trạng thái lưu thuộc dialog.
+3. **Biểu mẫu tệp.** Nhập mô tả nhiều dòng và thêm từng thẻ bằng nút thêm hoặc Enter sau khi kết thúc phiên nhập IME. Dấu phẩy nằm trong nội dung thẻ. Kiểm tra thẻ trùng chính xác và giới hạn số lượng. Lưu gửi phần thay đổi, dùng `null` khi xóa mô tả và `[]` khi gỡ hết thẻ. Khi lỗi, giữ mô tả, thẻ và phần đang nhập để sửa hoặc thử lại.
+4. **Biểu mẫu thư mục.** Tạo hoặc sửa thư mục có ô mô tả tùy chọn. Mô tả có nội dung xuất hiện dưới breadcrumb của thư mục đang mở. Gửi `null` khi xóa mô tả. Khóa truy vấn Drive giữ tài khoản, thư mục, tìm kiếm và trang như trên.
+5. **Sau khi lưu.** Với tệp, hủy lượt đọc đang chờ trước khi cập nhật metadata vào cache chi tiết. Giữ thông tin quyền từ lần đọc, đọc lại chi tiết và làm mới truy vấn Drive. Với thư mục, làm mới truy vấn Drive và bộ chọn đích của tài khoản. Vùng trạng thái báo kết quả sau thao tác.
+6. **Bàn phím và responsive.** Focus vào mô tả trong dialog tệp, vào tên trong dialog thư mục. Giữ focus trong dialog. Escape hoặc Hủy khi có thay đổi mở bước xác nhận bỏ bản nhập. Khi đóng, trả focus về nút mở nếu còn hiển thị hoặc nội dung chính. Kiểm tra mô tả và thẻ theo giới hạn code point Unicode, tên nút gỡ từng thẻ, vùng cuộn và tràn ngang ở hai viewport.
 
 ## Thùng rác
 
@@ -32,6 +41,7 @@ Mục Thùng rác nằm ở thanh điều hướng desktop và menu mobile. `/tr
 
 1. **Xác nhận và danh sách.** Hộp thoại thư mục nêu phạm vi cả cây hoạt động. Danh sách hỗn hợp phân biệt tệp và thư mục. Mỗi cây có một mục, gồm tên thư mục gốc và thời điểm đưa vào Thùng rác. Tệp hoặc thư mục xóa riêng vẫn được hiển thị theo mục riêng của nó.
 2. **Khôi phục và trùng tên.** Dùng `kind` để gọi đúng thao tác. Khi API trả tên mới hoặc đích mới, hiển thị tên được khôi phục, giải thích thay đổi và link mở vị trí đích. Đường dẫn đến mục dùng ID để tiếp tục mở đúng sau khi đổi tên. Làm mới danh sách và quyền thuộc cây bị tác động sau khi hoàn tất.
+   Mở đích để đọc [mô tả và thẻ còn trên mục khôi phục](#chi-tiết-tệp-và-metadata).
 3. **Desktop và mobile.** Dùng cùng hành vi focus như tệp. Kiểm tra thao tác bàn phím, vùng bấm, tên dài, phân trang và vùng nhìn chứa thông báo cùng link đích trên cả hai viewport.
 
 ### Xóa vĩnh viễn và dọn Thùng rác
@@ -48,12 +58,16 @@ Mục Thùng rác nằm ở thanh điều hướng desktop và menu mobile. `/tr
 3. **Dữ liệu và phản hồi.** Danh sách người nhận gắn với tài khoản, tệp và trang đang xem trong hộp thoại. Số trang của `/shared-with-me` nằm trên URL. Giữ nội dung đang nhập nếu gửi lỗi, khóa thao tác lặp và làm mới danh sách khi API xác nhận thay đổi. Hộp thoại và danh sách nhận đặt lịch đọc lại theo hạn đang hiển thị. Trang chi tiết kiểm tra lại quyền khi mở hoặc cửa sổ lấy focus. Tách trạng thái tải, trống, lỗi có thể thử lại và tệp không truy cập được. Nếu trình duyệt không sao chép được link, giữ link có thể chọn bằng tay.
 4. **Bàn phím và mobile.** Focus vào email khi mở và trở về nút Chia sẻ khi đóng. Chỉnh thời hạn đưa focus đến ô ngày giờ. Xác nhận thu hồi bắt đầu ở Hủy và trả focus về thao tác phù hợp hoặc trường email sau khi dòng biến mất. Kiểm tra tên tệp dài, vùng bấm, trường ngày giờ và hành vi trên `1280×720` và `390×844`.
 
+Trang [chi tiết tệp](#chi-tiết-tệp-và-metadata) dùng quyền đọc mới nhất để quyết định hiển thị thao tác sửa cho chủ sở hữu.
+
 ## Chia sẻ thư mục
 
 1. **Điểm vào và URL.** Chủ thư mục mở **Chia sẻ** trên hàng hoặc thẻ thư mục. Hộp thoại dùng cùng quy tắc hạn và bàn phím với chia sẻ tệp, sao chép link `/drive?folder={id}`. **Được chia sẻ với tôi** có hai tab điều hướng **Tệp** và **Thư mục**. Tab và trang hiện tại được giữ trong URL, kể cả khi đăng nhập từ link.
 2. **Quyền xem.** Dùng quyền `owner` hoặc `viewer` từ API. Khi là người xem, hiển thị trạng thái **Chỉ xem**, breadcrumb bắt đầu ở mục cao nhất được phép và mọi thao tác ghi được ẩn. Người nhận có thể mở thư mục con, xem thông tin tệp và tải xuống trong phạm vi được phép. Hai tab liệt kê các mục chia sẻ trực tiếp.
 3. **Di chuyển và khôi phục.** Chủ tệp dùng bộ chọn đích có phân trang để di chuyển từng tệp. Nội dung đi theo quyền qua thư mục ở vị trí mới. Sau khi di chuyển, giữ danh sách nguồn, trả focus về thao tác kế cận hoặc nội dung chính và hiển thị link mở đích. Khi khôi phục về Drive gốc vì vị trí gốc đang chia sẻ, thông báo rõ để chủ tệp biết nơi tìm tệp.
 4. **Trạng thái và bàn phím.** Khóa truy vấn danh sách nhận gồm tài khoản, tab và số trang. Khi đổi tab, đọc đúng loại mục rồi hiện danh sách, trạng thái trống hoặc lỗi tải của tab đó. Nút điều hướng thư mục và tệp là link thật. Khi mở thư mục được chia sẻ, đợi xác nhận quyền để dựng breadcrumb và các thao tác phù hợp. Kiểm tra link sâu, chuyển tab, tên dài, đọc trạng thái **Chỉ xem** và thao tác bằng bàn phím ở hai viewport.
+
+Người xem đọc [mô tả thư mục](#chi-tiết-tệp-và-metadata) khi mở được thư mục. Tab Thư mục tiếp tục dùng danh sách grant trực tiếp, người xem mở mục để đọc mô tả.
 
 ## Phạm vi PWA
 

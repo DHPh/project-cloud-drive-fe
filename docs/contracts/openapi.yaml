@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Cloud Drive API
-  version: 0.7.0
+  version: 0.8.0
   description: >-
     Browser API for sign-in, folder management, upload, file editing, download, file and folder trash, and sharing.
     State-changing browser requests require the configured application Origin.
@@ -125,7 +125,7 @@ paths:
       operationId: createFolder
       tags: [Folders]
       summary: Create a folder
-      description: Creates a folder under a parent owned by the current account or in the root.
+      description: Creates a folder with an optional plain-text description under an owned parent or in the root.
       requestBody:
         required: true
         content:
@@ -158,12 +158,13 @@ paths:
     patch:
       operationId: updateFolder
       tags: [Folders]
-      summary: Rename or move a folder
+      summary: Edit folder metadata or move a folder
       description: >-
         Only the owner can update the folder. Omitted fields keep their current values.
+        Set description to null to clear it.
         A null parentId moves it to the root. The folder cannot move into itself or a
         descendant. File and folder IDs, object data and file sharing grants are preserved.
-        An unchanged name and parent return the existing folder.
+        If all fields are unchanged, returns the existing folder.
       parameters:
         - name: folderId
           in: path
@@ -306,19 +307,21 @@ paths:
       operationId: getFile
       tags: [Files, Sharing]
       summary: Read file information
-      description: The owner or a recipient with an unexpired direct or inherited grant can read a ready, active file.
+      description: >-
+        The owner or a recipient with an unexpired direct or inherited grant can read a ready, active file.
+        The response identifies whether the current account is the owner or a viewer.
       parameters:
         - $ref: '#/components/parameters/FileId'
       responses:
         '200':
-          description: Information for a file visible to the signed-in account.
+          description: Details and access role for a file visible to the signed-in account.
           headers:
             Cache-Control:
               $ref: '#/components/headers/PrivateCache'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FileResponse'
+                $ref: '#/components/schemas/FileDetailResponse'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -1209,7 +1212,7 @@ components:
       description: A folder UUID or the literal root.
     FolderSummary:
       type: object
-      required: [kind, id, name, parentId, createdAt, updatedAt]
+      required: [kind, id, name, parentId, description, createdAt, updatedAt]
       properties:
         kind:
           type: string
@@ -1219,6 +1222,8 @@ components:
           format: uuid
         name:
           type: string
+        description:
+          $ref: '#/components/schemas/FolderDescription'
         parentId:
           type: string
           format: uuid
@@ -1237,6 +1242,11 @@ components:
       description: >-
         Trimmed display name. Exact case-sensitive active sibling names must be
         unique for the same owner, including in the root.
+    FolderDescription:
+      type: string
+      nullable: true
+      maxLength: 2000
+      description: Optional plain-text description shown to accounts authorized to read the folder.
     CreateFolderRequest:
       type: object
       additionalProperties: false
@@ -1244,6 +1254,8 @@ components:
       properties:
         name:
           $ref: '#/components/schemas/FolderName'
+        description:
+          $ref: '#/components/schemas/FolderDescription'
         parentId:
           type: string
           format: uuid
@@ -1256,6 +1268,8 @@ components:
       properties:
         name:
           $ref: '#/components/schemas/FolderName'
+        description:
+          $ref: '#/components/schemas/FolderDescription'
         parentId:
           type: string
           format: uuid
@@ -1707,3 +1721,18 @@ components:
           $ref: '#/components/schemas/Success'
         data:
           $ref: '#/components/schemas/FileSummary'
+    FileDetailResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          allOf:
+            - $ref: '#/components/schemas/FileSummary'
+            - type: object
+              required: [access]
+              properties:
+                access:
+                  type: string
+                  enum: [owner, viewer]

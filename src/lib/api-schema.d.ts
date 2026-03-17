@@ -69,7 +69,7 @@ export interface paths {
         put?: never;
         /**
          * Create a folder
-         * @description Creates a folder under a parent owned by the current account or in the root.
+         * @description Creates a folder with an optional plain-text description under an owned parent or in the root.
          */
         post: operations["createFolder"];
         delete?: never;
@@ -92,8 +92,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Rename or move a folder
-         * @description Only the owner can update the folder. Omitted fields keep their current values. A null parentId moves it to the root. The folder cannot move into itself or a descendant. File and folder IDs, object data and file sharing grants are preserved. An unchanged name and parent return the existing folder.
+         * Edit folder metadata or move a folder
+         * @description Only the owner can update the folder. Omitted fields keep their current values. Set description to null to clear it. A null parentId moves it to the root. The folder cannot move into itself or a descendant. File and folder IDs, object data and file sharing grants are preserved. If all fields are unchanged, returns the existing folder.
          */
         patch: operations["updateFolder"];
         trace?: never;
@@ -147,7 +147,7 @@ export interface paths {
         };
         /**
          * Read file information
-         * @description The owner or a recipient with an unexpired direct or inherited grant can read a ready, active file.
+         * @description The owner or a recipient with an unexpired direct or inherited grant can read a ready, active file. The response identifies whether the current account is the owner or a viewer.
          */
         get: operations["getFile"];
         put?: never;
@@ -494,6 +494,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+            description: components["schemas"]["FolderDescription"];
             /**
              * Format: uuid
              * @description Null for a folder directly under the user's root.
@@ -506,8 +507,11 @@ export interface components {
         };
         /** @description Trimmed display name. Exact case-sensitive active sibling names must be unique for the same owner, including in the root. */
         FolderName: string;
+        /** @description Optional plain-text description shown to accounts authorized to read the folder. */
+        FolderDescription: string | null;
         CreateFolderRequest: {
             name: components["schemas"]["FolderName"];
+            description?: components["schemas"]["FolderDescription"];
             /**
              * Format: uuid
              * @description Parent folder ID. Null or omitted creates in the root.
@@ -516,6 +520,7 @@ export interface components {
         };
         UpdateFolderRequest: {
             name?: components["schemas"]["FolderName"];
+            description?: components["schemas"]["FolderDescription"];
             /**
              * Format: uuid
              * @description Parent folder ID. Null moves the folder to the root.
@@ -778,6 +783,13 @@ export interface components {
         FileResponse: {
             success: components["schemas"]["Success"];
             data: components["schemas"]["FileSummary"];
+        };
+        FileDetailResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["FileSummary"] & {
+                /** @enum {string} */
+                access: "owner" | "viewer";
+            };
         };
     };
     responses: {
@@ -1297,14 +1309,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Information for a file visible to the signed-in account. */
+            /** @description Details and access role for a file visible to the signed-in account. */
             200: {
                 headers: {
                     "Cache-Control": components["headers"]["PrivateCache"];
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FileResponse"];
+                    "application/json": components["schemas"]["FileDetailResponse"];
                 };
             };
             400: components["responses"]["InvalidRequest"];

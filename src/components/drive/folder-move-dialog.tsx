@@ -2,7 +2,7 @@
 
 import { ChevronRightIcon, FolderIcon } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ApiError, listFolder, updateFile, updateFolder, type FolderItem } from '@/lib/api';
 import { localizedError } from '@/lib/messages';
 import { Overlay } from '../overlay';
@@ -53,11 +53,11 @@ export function MoveDialog({ item, userId, trigger, suspended, onDismiss, onExpi
   useEffect(() => {
     if (query.error instanceof ApiError && query.error.status === 401) onExpired();
   }, [query.error, onExpired]);
-  useEffect(() => {
-    if (suspended || loading || focusDestination.current !== destination.id) return;
+  useLayoutEffect(() => {
+    if (suspended || focusDestination.current !== destination.id) return;
     focusDestination.current = null;
     currentHeading.current?.focus();
-  }, [destination.id, loading, suspended]);
+  }, [destination.id, suspended]);
 
   function browse(id: string, name: string) {
     if (request.current || id === destination.id) return;

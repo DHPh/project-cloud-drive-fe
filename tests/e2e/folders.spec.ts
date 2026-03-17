@@ -217,10 +217,28 @@ test('DRIVE-02 creates, renames, and moves a folder while preserving the shared 
       await expect(dialog.getByTestId('folder-move-submit')).toBeDisabled()
       const archiveCrumb = dialog.getByTestId('move-picker-ancestor').and(dialog.locator(`[data-folder-id="${archiveId}"]`))
       await archiveCrumb.press('Enter')
-      await pickerFolder(target.id).press('Enter')
-      await expect(current).toHaveAttribute('data-folder-id', target.id)
+      let releaseDestination!: () => void
+      const responseGate = new Promise<void>((resolve) => { releaseDestination = resolve })
+      await page.route(
+        (url) => url.pathname === `${api}/folders/${target.id}/contents` && url.searchParams.get('type') === 'folders',
+        async (route) => { await responseGate; await route.continue() },
+        { times: 1 },
+      )
+      const confirmMove = dialog.getByTestId('folder-move-submit')
+      const cancelMove = dialog.getByRole('button', { name: /^(hủy|cancel)$/i })
+      try {
+        await pickerFolder(target.id).press('Enter')
+        await expect(current).toHaveAttribute('data-folder-id', target.id)
+        await expect(current).toBeFocused()
+        await expect(confirmMove).toBeDisabled()
+        await cancelMove.focus()
+      } finally {
+        releaseDestination()
+      }
+      await expect(confirmMove).toBeEnabled()
+      await expect(cancelMove).toBeFocused()
       const moved = apiResponse(page, 'PATCH', `/folders/${child.id}`)
-      await dialog.getByTestId('folder-move-submit').press('Enter')
+      await confirmMove.press('Enter')
       const response = await moved
       expect(response.status()).toBe(200)
       expect(await response.json()).toMatchObject({ success: true, data: { id: child.id, parentId: target.id, name: updatedFolderName } })

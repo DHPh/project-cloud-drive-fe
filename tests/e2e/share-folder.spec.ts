@@ -223,8 +223,11 @@ test('SHARE-02 inherits folder access, restores privately, and respects the fold
         await folder.press('Enter')
         await expect(current).toHaveAttribute('data-folder-id', id)
       }
+      const confirmMove = picker.getByTestId('file-move-submit')
+      await expect(current).toBeFocused()
+      await expect(confirmMove).toBeEnabled()
       const moved = apiResponse(page, 'PATCH', filePath)
-      await picker.getByTestId('file-move-submit').press('Enter')
+      await confirmMove.press('Enter')
       const updated = await moved
       expect(updated.status()).toBe(200)
       expect(await updated.json()).toMatchObject({ success: true, data: { id: file.id, folderId: nested.id, originalName: fileName } })

@@ -43,7 +43,7 @@ export function DriveItems({ title, items, view, canManage, onRename, onTrash, o
                 <icon.Icon aria-hidden="true" className="h-6 w-6" />
               </span>
               <div className="min-w-0">
-                {item.kind === 'file' && !canManage
+                {item.kind === 'file'
                   ? <Link data-testid="drive-file-link" href={fileHref(item.id)} prefetch={false} className={`${nameClass} rounded-sm text-primary-800 hover:underline`} title={name}>{name}</Link>
                   : <span className={nameClass} title={name}>{name}</span>}
                 {item.kind === 'file' && <span className="block text-xs tabular-nums text-gray-600">{readableSize(item.size, locale)}</span>}
@@ -65,7 +65,7 @@ export function DriveItems({ title, items, view, canManage, onRename, onTrash, o
                   {canManage && (
                     <div className={actionsClass}>
                       <button type="button" data-testid="folder-share" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.share} aria-label={`${text.share}: ${name}`} onClick={(event) => onShare(item, event.currentTarget)}><UserPlusIcon aria-hidden="true" className="h-4 w-4" /></button>
-                      <button type="button" data-testid="folder-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.rename} aria-label={`${text.rename}: ${name}`} onClick={(event) => onFolderRename(item, event.currentTarget)}><PencilSquareIcon aria-hidden="true" className="h-4 w-4" /></button>
+                      <button type="button" data-testid="folder-rename" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.editFolderInfo} aria-label={`${text.editFolderInfo} ${name}`} onClick={(event) => onFolderRename(item, event.currentTarget)}><PencilSquareIcon aria-hidden="true" className="h-4 w-4" /></button>
                       <button type="button" id={`folder-move-${item.id}`} data-testid="folder-move" className="icon-button h-11 w-11 sm:h-10 sm:w-8" title={text.move} aria-label={`${text.move}: ${name}`} onClick={(event) => onMove(item, event.currentTarget)}><ArrowRightIcon aria-hidden="true" className="h-4 w-4" /></button>
                       <button type="button" id={`drive-trash-folder-${item.id}`} data-testid="folder-trash" className="icon-button h-11 w-11 hover:bg-red-50 hover:text-red-800 sm:h-10 sm:w-8" title={text.moveFolderToTrash} aria-label={`${text.moveFolderToTrash}: ${name}`} onClick={(event) => onTrash(item, event.currentTarget)}><TrashIcon aria-hidden="true" className="h-4 w-4" /></button>
                     </div>

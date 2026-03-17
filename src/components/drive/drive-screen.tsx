@@ -199,6 +199,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
             <button type="button" aria-label={text.list} title={text.list} aria-pressed={view === 'list'} className={`icon-button ${view === 'list' ? 'bg-white shadow-sm' : ''}`} onClick={() => window.history.replaceState(null, '', driveHref(folder, search, page, 'list'))}><ListBulletIcon className="h-5 w-5" /></button>
           </div>
         </div>
+        {data?.data.folder?.description && <p data-testid="drive-folder-description" className="max-w-3xl whitespace-pre-wrap text-sm text-gray-700 [overflow-wrap:anywhere]">{data.data.folder.description}</p>}
         {readOnly && <p data-testid="drive-read-only" className="w-fit rounded-full bg-primary-50 px-3 py-1 text-sm font-medium text-primary-900">{text.readOnly}</p>}
         <div className={notice ? 'flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900' : 'sr-only'}>
           <p role="status" data-testid="drive-status">{notice?.message || (query.isFetching ? text.updating : '')}</p>
@@ -279,9 +280,12 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
       )}
       {(dialog?.kind === 'create-folder' || dialog?.kind === 'rename-folder') && (
         <FolderNameDialog folder={dialog.kind === 'rename-folder' ? dialog.folder : undefined} parent={folder} trigger={dialog.trigger} suspended={expired}
-          onDismiss={() => setDialog(null)} onExpired={onExpired} onSaved={async () => {
+          onDismiss={() => setDialog(null)} onExpired={onExpired} onSaved={async (savedFolder) => {
             await refreshFolderLists();
-            setNotice({ message: dialog.kind === 'rename-folder' ? text.folderRenamed : text.folderCreated });
+            const message = dialog.kind === 'rename-folder'
+              ? (savedFolder.name === dialog.folder.name ? text.folderInfoSaved : text.folderRenamed)
+              : text.folderCreated;
+            setNotice({ message });
           }} />
       )}
       {dialog?.kind === 'move' && (
