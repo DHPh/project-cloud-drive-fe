@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Cloud Drive API
-  version: 0.8.0
+  version: 0.9.0
   description: >-
     Browser API for sign-in, folder management, upload, file editing, download, file and folder trash, and sharing.
     State-changing browser requests require the configured application Origin.
@@ -118,6 +118,80 @@ paths:
                         enum: [true]
         '403':
           $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /drive/search:
+    get:
+      operationId: searchDrive
+      tags: [Folders, Files]
+      summary: Search the signed-in account's own Drive
+      description: Searches active folders and uploaded files by name, with optional descriptions and file tags. Matching is case-insensitive and literal.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 255, default: '' }
+        - name: includeMetadata
+          in: query
+          schema: { type: boolean, default: false }
+        - name: type
+          in: query
+          schema: { type: string, enum: [all, files, folders], default: all }
+        - name: sort
+          in: query
+          description: Sort by case-insensitive name or newest creation time, then by ID and kind.
+          schema: { type: string, enum: [name, newest], default: name }
+      responses:
+        '200':
+          description: A page of matching items with breadcrumbs to their parent. The root is omitted from breadcrumbs.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriveSearchResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /drive/timeline:
+    get:
+      operationId: listDriveTimeline
+      tags: [Files]
+      summary: List the signed-in account's uploaded files by date
+      description: >-
+        Returns active files owned by the account, newest upload first with an ID tie-break. Date filters
+        include both selected dates in Asia/Ho_Chi_Minh. Editing metadata or moving a file preserves its upload date.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: type
+          in: query
+          schema: { type: string, enum: [all, image, video, audio, pdf, document, other], default: all }
+      responses:
+        '200':
+          description: A page of files with breadcrumbs to their parent. The root is omitted from breadcrumbs.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriveTimelineResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
         '500':
           $ref: '#/components/responses/InternalError'
   /folders:
@@ -1405,6 +1479,54 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/FolderItem'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    DriveSearchResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                required: [item, breadcrumbs]
+                properties:
+                  item:
+                    $ref: '#/components/schemas/FolderItem'
+                  breadcrumbs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Breadcrumb'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    DriveTimelineResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                required: [item, breadcrumbs]
+                properties:
+                  item:
+                    $ref: '#/components/schemas/FileSummary'
+                  breadcrumbs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Breadcrumb'
         pagination:
           $ref: '#/components/schemas/Pagination'
     TrashedFileItem:

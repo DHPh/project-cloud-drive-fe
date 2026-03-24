@@ -27,6 +27,20 @@ Phạm vi áp dụng gồm DRIVE-01, DRIVE-02, DRIVE-03, TRASH-01, TRASH-02, TRA
 5. **Sau khi lưu.** Với tệp, hủy lượt đọc đang chờ trước khi cập nhật metadata vào cache chi tiết. Giữ thông tin quyền từ lần đọc, đọc lại chi tiết và làm mới truy vấn Drive. Với thư mục, làm mới truy vấn Drive và bộ chọn đích của tài khoản. Vùng trạng thái báo kết quả sau thao tác.
 6. **Bàn phím và responsive.** Focus vào mô tả trong dialog tệp, vào tên trong dialog thư mục. Giữ focus trong dialog. Escape hoặc Hủy khi có thay đổi mở bước xác nhận bỏ bản nhập. Khi đóng, trả focus về nút mở nếu còn hiển thị hoặc nội dung chính. Kiểm tra mô tả và thẻ theo giới hạn code point Unicode, tên nút gỡ từng thẻ, vùng cuộn và tràn ngang ở hai viewport.
 
+## Tải thư mục dạng ZIP
+
+Khi mở một thư mục đang có quyền đọc, hành động **Tải ZIP** chuẩn bị gói tải xuống với phản hồi bên cạnh nút. Khóa gửi lặp trong khi chuẩn bị. Giữ thao tác dùng bàn phím và màn hình vừa chiều rộng. Báo lỗi, giới hạn và cách chọn phạm vi nhỏ hơn khi tải thất bại.
+
+## Xem trước nội dung tệp
+
+Từ trang chi tiết, chủ hoặc người có quyền đọc mở **Xem trước** trong cùng màn hình. Phân biệt đang tải, định dạng chưa hỗ trợ, vượt giới hạn, mất quyền và lỗi có thể thử lại. Văn bản hiển thị nguyên văn, ảnh và PDF dùng vùng hiển thị đã cô lập. Giữ thao tác tải xuống theo quyền, nhãn điều khiển và vùng cuộn trên desktop/mobile. Dữ liệu xem trước riêng gắn với phiên và được dọn khi đổi mục hoặc đóng.
+
+## Tìm toàn Drive và Dòng thời gian
+
+1. **Điểm vào.** Giữ tìm trong thư mục đang mở và thêm điểm vào **Tìm toàn Drive của tôi** ở Drive của chủ. Dòng thời gian có link trong thanh bên và menu mobile. Kết quả mở đúng chi tiết tệp hoặc thư mục bằng URL thật và hiển thị đường dẫn vị trí.
+2. **Trạng thái.** URL giữ từ khóa, tùy chọn metadata, loại, sắp xếp, khoảng ngày và số trang. Đổi từ khóa hoặc lọc về trang đầu. Đồng bộ khi reload và Back/Forward. Đợi IME và bỏ phản hồi đến sai thứ tự. Hiển thị ngày theo giờ Việt Nam.
+3. **Phản hồi và trợ năng.** Phân biệt chưa nhập, không có kết quả, đang tải và lỗi có thể thử lại. Báo khoảng ngày không hợp lệ tại vùng bộ lọc. Kiểm tra bàn phím, focus và co vừa desktop/mobile.
+
 ## Thùng rác
 
 Mục Thùng rác nằm ở thanh điều hướng desktop và menu mobile. `/trash` hỗ trợ mở trực tiếp và giữ đích đến qua đăng nhập. URL giữ số trang, truy vấn phân theo tài khoản và trang. Các luồng khôi phục dùng trạng thái tải lần đầu, trống và lỗi có thể thử lại. Khóa thao tác lặp khi gửi, giữ mục khi có lỗi và về trang còn dữ liệu gần nhất khi trang hiện tại hết mục.

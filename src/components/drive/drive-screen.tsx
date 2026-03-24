@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, listFolder, type FileItem, type FolderItem, type FolderSummary, type User } from '@/lib/api';
 import { localizedError } from '@/lib/messages';
-import { driveHref, fileHref, pageNumber, type DriveView } from '@/lib/routes';
+import { driveHref, driveSearchHref, fileHref, pageNumber, type DriveView } from '@/lib/routes';
 import { useAccountSession } from '../account-session';
 import { useLocale } from '../providers';
 import { DriveItems } from './drive-items';
@@ -199,6 +199,9 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
             <button type="button" aria-label={text.list} title={text.list} aria-pressed={view === 'list'} className={`icon-button ${view === 'list' ? 'bg-white shadow-sm' : ''}`} onClick={() => window.history.replaceState(null, '', driveHref(folder, search, page, 'list'))}><ListBulletIcon className="h-5 w-5" /></button>
           </div>
         </div>
+        {canManage && <Link data-testid="global-drive-search-open" prefetch={false}
+          href={driveSearchHref({ q: search, includeMetadata: false, type: 'all', sort: 'name', page: 1 })}
+          className="button button-secondary min-h-11">{text.globalDriveSearch}</Link>}
         {data?.data.folder?.description && <p data-testid="drive-folder-description" className="max-w-3xl whitespace-pre-wrap text-sm text-gray-700 [overflow-wrap:anywhere]">{data.data.folder.description}</p>}
         {readOnly && <p data-testid="drive-read-only" className="w-fit rounded-full bg-primary-50 px-3 py-1 text-sm font-medium text-primary-900">{text.readOnly}</p>}
         <div className={notice ? 'flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900' : 'sr-only'}>

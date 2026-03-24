@@ -58,6 +58,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/drive/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search the signed-in account's own Drive
+         * @description Searches active folders and uploaded files by name, with optional descriptions and file tags. Matching is case-insensitive and literal.
+         */
+        get: operations["searchDrive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/drive/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the signed-in account's uploaded files by date
+         * @description Returns active files owned by the account, newest upload first with an ID tie-break. Date filters include both selected dates in Asia/Ho_Chi_Minh. Editing metadata or moving a file preserves its upload date.
+         */
+        get: operations["listDriveTimeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/folders": {
         parameters: {
             query?: never;
@@ -591,6 +631,26 @@ export interface components {
                 /** @description Visible ancestors in root-to-leaf order, followed by the current folder. The user's root is implicit and returns an empty array. */
                 breadcrumbs: components["schemas"]["Breadcrumb"][];
                 items: components["schemas"]["FolderItem"][];
+            };
+            pagination: components["schemas"]["Pagination"];
+        };
+        DriveSearchResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                items: {
+                    item: components["schemas"]["FolderItem"];
+                    breadcrumbs: components["schemas"]["Breadcrumb"][];
+                }[];
+            };
+            pagination: components["schemas"]["Pagination"];
+        };
+        DriveTimelineResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                items: {
+                    item: components["schemas"]["FileSummary"];
+                    breadcrumbs: components["schemas"]["Breadcrumb"][];
+                }[];
             };
             pagination: components["schemas"]["Pagination"];
         };
@@ -1157,6 +1217,68 @@ export interface operations {
                 };
             };
             403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    searchDrive: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+                q?: string;
+                includeMetadata?: boolean;
+                type?: "all" | "files" | "folders";
+                /** @description Sort by case-insensitive name or newest creation time, then by ID and kind. */
+                sort?: "name" | "newest";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of matching items with breadcrumbs to their parent. The root is omitted from breadcrumbs. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DriveSearchResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listDriveTimeline: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+                from?: string;
+                to?: string;
+                type?: "all" | "image" | "video" | "audio" | "pdf" | "document" | "other";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of files with breadcrumbs to their parent. The root is omitted from breadcrumbs. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DriveTimelineResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
             500: components["responses"]["InternalError"];
         };
     };

@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftOnRectangleIcon, ArrowUpTrayIcon, Bars3Icon, FolderIcon, FolderPlusIcon, MagnifyingGlassIcon, PlusIcon, TrashIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftOnRectangleIcon, ArrowUpTrayIcon, Bars3Icon, ClockIcon, FolderIcon, FolderPlusIcon, MagnifyingGlassIcon, PlusIcon, TrashIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { User } from '@/lib/api';
@@ -11,7 +11,7 @@ import { useLocale } from '../providers';
 
 type SearchProps = { search: string; onSearch: (search: string) => void };
 
-function DriveSearch({ search, onSearch }: SearchProps) {
+export function DriveSearch({ search, onSearch, label, testId = 'drive-search' }: SearchProps & { label?: string; testId?: string }) {
   const { text } = useLocale();
   const input = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,9 +39,9 @@ function DriveSearch({ search, onSearch }: SearchProps) {
     <form className="relative w-full max-w-2xl" role="search" onSubmit={(event) => { event.preventDefault(); schedule(input.current?.value ?? '', true); }}>
       <MagnifyingGlassIcon aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-600" />
       <input
-        ref={input} data-testid="drive-search" type="search" name="q" autoComplete="off" maxLength={255} defaultValue={search}
+        ref={input} data-testid={testId} type="search" name="q" autoComplete="off" maxLength={255} defaultValue={search}
         className="h-10 w-full rounded-full border border-transparent bg-gray-100 pl-10 pr-3 text-base text-gray-900 placeholder:text-gray-600 focus:border-primary-500 focus:bg-white sm:h-11 sm:text-sm"
-        placeholder={text.searchPlaceholder} aria-label={text.search}
+        placeholder={label ?? text.searchPlaceholder} aria-label={label ?? text.search}
         onChange={(event) => schedule(event.currentTarget.value)}
         onCompositionStart={() => { composing.current = true; if (timer.current !== null) clearTimeout(timer.current); }}
         onCompositionEnd={(event) => { composing.current = false; schedule(event.currentTarget.value); }}
@@ -53,7 +53,7 @@ function DriveSearch({ search, onSearch }: SearchProps) {
   );
 }
 
-type Section = 'drive' | 'trash' | 'shared' | 'file';
+type Section = 'drive' | 'trash' | 'shared' | 'file' | 'search' | 'timeline';
 
 type Props = {
   user: User;
@@ -70,6 +70,7 @@ function NavigationLinks({ active, homeHref, mobile = false, onNavigate }: { act
   const { text } = useLocale();
   const links = [
     { id: 'drive', href: homeHref, label: text.myDrive, Icon: FolderIcon, testId: undefined },
+    { id: 'timeline', href: '/drive/timeline', label: text.timeline, Icon: ClockIcon, testId: mobile ? 'timeline-nav-mobile' : 'timeline-nav' },
     { id: 'shared', href: '/shared-with-me', label: text.sharedWithMe, Icon: UserGroupIcon, testId: mobile ? 'shared-nav-mobile' : 'shared-nav' },
     { id: 'trash', href: '/trash', label: text.trash, Icon: TrashIcon, testId: mobile ? 'trash-nav-mobile' : 'trash-nav' },
   ];

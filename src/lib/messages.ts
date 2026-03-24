@@ -2,6 +2,12 @@ import { ApiError } from './api';
 
 const vi = {
   app: 'Cloud Drive', myDrive: 'Drive của tôi', home: 'Trang chủ', search: 'Tìm kiếm trong Drive', searchPlaceholder: 'Tìm kiếm',
+  globalDriveSearch: 'Tìm toàn Drive của tôi', timeline: 'Dòng thời gian', searchKeyword: 'Từ khóa', searchMetadata: 'Tìm thêm trong mô tả và thẻ',
+  searchDriveIdle: 'Nhập từ khóa để tìm trong Drive của tôi.', noDriveSearchResults: 'Không tìm thấy mục phù hợp.',
+  filterType: 'Loại', allTypes: 'Tất cả', sortResults: 'Sắp xếp', sortByName: 'Theo tên', sortNewest: 'Mới nhất',
+  fromDate: 'Từ ngày', toDate: 'Đến ngày', vietnamDateRange: 'Khoảng ngày tính theo giờ Việt Nam.',
+  invalidDateRange: 'Nhập khoảng ngày hợp lệ với ngày bắt đầu trước hoặc bằng ngày kết thúc.', noTimelineFiles: 'Không có tệp trong phạm vi này.',
+  typeImage: 'Ảnh', typeVideo: 'Video', typeAudio: 'Âm thanh', typePdf: 'PDF', typeDocument: 'Tài liệu', typeOther: 'Khác',
   newItem: 'Mới', upload: 'Tải tệp lên', folder: 'Thư mục', folders: 'Thư mục', files: 'Tệp',
   openNavigation: 'Mở điều hướng', navigation: 'Điều hướng chính', close: 'Đóng', breadcrumb: 'Đường dẫn thư mục',
   display: 'Chế độ hiển thị', grid: 'Dạng lưới', list: 'Dạng danh sách',
@@ -98,6 +104,12 @@ type Dictionary = typeof vi;
 type TextKey = { [Key in keyof Dictionary]: Dictionary[Key] extends string ? Key : never }[keyof Dictionary];
 const en: Dictionary = {
   app: 'Cloud Drive', myDrive: 'My Drive', home: 'Home', search: 'Search in Drive', searchPlaceholder: 'Search',
+  globalDriveSearch: 'Search all of My Drive', timeline: 'Timeline', searchKeyword: 'Keyword', searchMetadata: 'Include descriptions and tags',
+  searchDriveIdle: 'Enter a keyword to search My Drive.', noDriveSearchResults: 'No matching items found.',
+  filterType: 'Type', allTypes: 'All types', sortResults: 'Sort by', sortByName: 'Name', sortNewest: 'Newest',
+  fromDate: 'From', toDate: 'To', vietnamDateRange: 'Date ranges use Vietnam time.',
+  invalidDateRange: 'Enter a valid date range with the start date on or before the end date.', noTimelineFiles: 'No files in this range.',
+  typeImage: 'Images', typeVideo: 'Video', typeAudio: 'Audio', typePdf: 'PDF', typeDocument: 'Documents', typeOther: 'Other',
   newItem: 'New', upload: 'Upload files', folder: 'Folder', folders: 'Folders', files: 'Files',
   openNavigation: 'Open navigation', navigation: 'Main navigation', close: 'Close', breadcrumb: 'Folder path',
   display: 'View mode', grid: 'Grid view', list: 'List view',

@@ -1,4 +1,5 @@
 import type { components, operations } from './api-schema';
+import { driveSearchQuery, timelineQuery, type DriveSearchFilters, type TimelineFilters } from './routes';
 
 const apiBase = '/api/v1';
 
@@ -37,6 +38,9 @@ type GrantShareResponse = operations['grantFileShare']['responses'][200]['conten
 type RevokeShareResponse = operations['revokeFileShare']['responses'][200]['content']['application/json'] | operations['revokeFolderShare']['responses'][200]['content']['application/json'];
 type SharedFilesResponse = operations['listSharedFiles']['responses'][200]['content']['application/json'];
 type SharedFoldersResponse = operations['listSharedFolders']['responses'][200]['content']['application/json'];
+type DriveSearchResponse = operations['searchDrive']['responses'][200]['content']['application/json'];
+type DriveTimelineResponse = operations['listDriveTimeline']['responses'][200]['content']['application/json'];
+export type DriveDiscoveryResponse = DriveSearchResponse | DriveTimelineResponse;
 export type TrashItem = TrashListResponse['data']['items'][number];
 export type ShareGrant = FileSharesResponse['data']['items'][number];
 
@@ -93,6 +97,14 @@ export function listFolder(folder: string, search: string, page: number, signal:
 
 export async function createFolder(data: CreateFolderRequest, signal: AbortSignal) {
   return (await json<CreateFolderResponse>('/folders', jsonOptions('POST', data, signal))).data;
+}
+
+export function searchDrive(filters: DriveSearchFilters, signal: AbortSignal) {
+  return json<DriveSearchResponse>(`/drive/search?${driveSearchQuery(filters)}`, { signal });
+}
+
+export function listDriveTimeline(filters: TimelineFilters, signal: AbortSignal) {
+  return json<DriveTimelineResponse>(`/drive/timeline?${timelineQuery(filters)}`, { signal });
 }
 
 export async function updateFolder(folderId: string, changes: UpdateFolderRequest, signal: AbortSignal) {
