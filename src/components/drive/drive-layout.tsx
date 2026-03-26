@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftOnRectangleIcon, ArrowUpTrayIcon, Bars3Icon, ClockIcon, FolderIcon, FolderPlusIcon, MagnifyingGlassIcon, PlusIcon, TrashIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftOnRectangleIcon, ArrowUpTrayIcon, Bars3Icon, ClockIcon, FolderIcon, FolderPlusIcon, MagnifyingGlassIcon, PlusIcon, ShareIcon, TrashIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { User } from '@/lib/api';
@@ -53,7 +53,7 @@ export function DriveSearch({ search, onSearch, label, testId = 'drive-search' }
   );
 }
 
-type Section = 'drive' | 'trash' | 'shared' | 'file' | 'search' | 'timeline';
+type Section = 'drive' | 'trash' | 'shared' | 'outgoing' | 'file' | 'search' | 'timeline';
 
 type Props = {
   user: User;
@@ -72,6 +72,7 @@ function NavigationLinks({ active, homeHref, mobile = false, onNavigate }: { act
     { id: 'drive', href: homeHref, label: text.myDrive, Icon: FolderIcon, testId: undefined },
     { id: 'timeline', href: '/drive/timeline', label: text.timeline, Icon: ClockIcon, testId: mobile ? 'timeline-nav-mobile' : 'timeline-nav' },
     { id: 'shared', href: '/shared-with-me', label: text.sharedWithMe, Icon: UserGroupIcon, testId: mobile ? 'shared-nav-mobile' : 'shared-nav' },
+    { id: 'outgoing', href: '/shared-by-me', label: text.sharedByMe, Icon: ShareIcon, testId: mobile ? 'outgoing-nav-mobile' : 'outgoing-nav' },
     { id: 'trash', href: '/trash', label: text.trash, Icon: TrashIcon, testId: mobile ? 'trash-nav-mobile' : 'trash-nav' },
   ];
 

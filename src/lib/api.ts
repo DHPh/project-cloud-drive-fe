@@ -1,5 +1,5 @@
 import type { components, operations } from './api-schema';
-import { driveSearchQuery, timelineQuery, type DriveSearchFilters, type TimelineFilters } from './routes';
+import { driveSearchQuery, outgoingSharesHref, timelineQuery, type DriveSearchFilters, type OutgoingFilters, type TimelineFilters } from './routes';
 
 const apiBase = '/api/v1';
 
@@ -38,6 +38,8 @@ type GrantShareResponse = operations['grantFileShare']['responses'][200]['conten
 type RevokeShareResponse = operations['revokeFileShare']['responses'][200]['content']['application/json'] | operations['revokeFolderShare']['responses'][200]['content']['application/json'];
 type SharedFilesResponse = operations['listSharedFiles']['responses'][200]['content']['application/json'];
 type SharedFoldersResponse = operations['listSharedFolders']['responses'][200]['content']['application/json'];
+type OutgoingSharesResponse = operations['listOutgoingShares']['responses'][200]['content']['application/json'];
+export type OutgoingShare = OutgoingSharesResponse['data']['items'][number];
 type DriveSearchResponse = operations['searchDrive']['responses'][200]['content']['application/json'];
 type DriveTimelineResponse = operations['listDriveTimeline']['responses'][200]['content']['application/json'];
 export type DriveDiscoveryResponse = DriveSearchResponse | DriveTimelineResponse;
@@ -154,6 +156,10 @@ export async function getFile(fileId: string, signal: AbortSignal) {
   return (await json<FileDetailResponse>(`/files/${encodeURIComponent(fileId)}`, { signal })).data;
 }
 
+export function getFilePreview(fileId: string, signal: AbortSignal) {
+  return request(`/files/${encodeURIComponent(fileId)}/preview`, { signal });
+}
+
 function itemSharePath(item: Pick<FolderItem, 'id' | 'kind'>) {
   const collection = item.kind === 'folder' ? 'folders' : 'files';
   return `/${collection}/${encodeURIComponent(item.id)}/shares`;
@@ -178,8 +184,26 @@ export function listSharedItems(tab: 'files' | 'folders', page: number, signal: 
   return json<SharedFilesResponse | SharedFoldersResponse>(`${path}?page=${page}`, { signal });
 }
 
+export function listOutgoingShares(filters: OutgoingFilters, signal: AbortSignal) {
+  return json<OutgoingSharesResponse>(outgoingSharesHref(filters), { signal });
+}
+
 export function downloadUrl(fileId: string) {
   return `${apiBase}/files/${encodeURIComponent(fileId)}/download`;
+}
+
+export async function downloadFolderArchive(id: string, signal: AbortSignal) {
+  const response = await request(`/folders/${encodeURIComponent(id)}/download`, { signal });
+  if (response.headers.get('content-type')?.split(';')[0]?.trim() !== 'application/zip') throw new ApiError(502, 'ARCHIVE_DOWNLOAD_FAILED');
+  const blob = await response.blob();
+  // An interrupted stream may be delivered without an HTTP error. Require a complete ZIP trailer.
+  const trailer = new DataView(await blob.slice(-65_557).arrayBuffer());
+  for (let index = trailer.byteLength - 22; index >= 0; index--) {
+    if (trailer.getUint32(index, true) === 0x06054b50 && index + 22 + trailer.getUint16(index + 20, true) === trailer.byteLength) {
+      return { blob, disposition: response.headers.get('content-disposition') };
+    }
+  }
+  throw new ApiError(502, 'ARCHIVE_DOWNLOAD_FAILED');
 }
 
 export function uploadFile(file: File, folder: string, onProgress: (percent: number) => void, signal: AbortSignal) {

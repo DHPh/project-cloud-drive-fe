@@ -158,6 +158,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/folders/{folderId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download an authorized folder tree as ZIP
+         * @description Includes active descendants, ready files and empty folders. Stops the download if an object becomes unavailable or permission is lost while streaming.
+         */
+        get: operations["downloadFolderArchive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files": {
         parameters: {
             query?: never;
@@ -214,6 +234,26 @@ export interface paths {
          * @description The owner or a recipient with an unexpired direct or inherited grant can download the active file. Files in Trash return 404.
          */
         get: operations["downloadFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{fileId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read supported content for a private preview
+         * @description Checks the current file read permission. Returns raster images, PDF or UTF-8 plain text only. Responses are private and use a sandbox content-security policy. Limits are 512 KiB for text and 10 MiB otherwise.
+         */
+        get: operations["previewFile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -356,6 +396,26 @@ export interface paths {
          * @description The backend captures entries at acceptance, excluding entries already being processed. Reusing the same owner-scoped requestId returns its original count and does not include later entries.
          */
         post: operations["emptyTrash"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shared-by-me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List direct grants issued by the current account
+         * @description Returns grants on active resources owned by the account. Includes expired grants unless filtered. Multiple recipient grants for an item have separate rows. Sorts by newest grantedAt, kind, resource ID and recipient ID.
+         */
+        get: operations["listOutgoingShares"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -788,6 +848,20 @@ export interface components {
             expiresAt: string;
             /** @description Whether the grant is valid at the time the response was generated. */
             isActive: boolean;
+        };
+        OutgoingSharesResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                items: {
+                    /** @enum {string} */
+                    kind: "file" | "folder";
+                    /** Format: uuid */
+                    resourceId: string;
+                    resourceName: string;
+                    grant: components["schemas"]["ShareGrant"];
+                }[];
+            };
+            pagination: components["schemas"]["Pagination"];
         };
         FileShareResponse: {
             success: components["schemas"]["Success"];
@@ -1380,6 +1454,43 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
+    downloadFolderArchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderId: components["parameters"]["FolderUuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ZIP archive with safe Unicode archive paths. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            404: components["responses"]["NotFound"];
+            /** @description ARCHIVE_TOO_LARGE. Choose a smaller folder (up to 500 files, 500 folders and 100 MiB of file content). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
+        };
+    };
     uploadFile: {
         parameters: {
             query?: never;
@@ -1508,6 +1619,58 @@ export interface operations {
             400: components["responses"]["InvalidRequest"];
             401: components["responses"]["SessionRequired"];
             404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+            503: components["responses"]["StorageUnavailable"];
+        };
+    };
+    previewFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Validated preview bytes. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/webp": string;
+                    "image/gif": string;
+                    "application/pdf": string;
+                    "text/plain": string;
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            404: components["responses"]["NotFound"];
+            /** @description PREVIEW_TOO_LARGE. Download remains available if permitted. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PREVIEW_UNSUPPORTED. Download remains available if permitted. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            429: components["responses"]["RateLimited"];
             500: components["responses"]["InternalError"];
             503: components["responses"]["StorageUnavailable"];
         };
@@ -1668,6 +1831,35 @@ export interface operations {
             400: components["responses"]["InvalidRequest"];
             401: components["responses"]["SessionRequired"];
             403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listOutgoingShares: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+                type?: "all" | "files" | "folders";
+                status?: "all" | "active" | "expired";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of outgoing grants. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutgoingSharesResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
             500: components["responses"]["InternalError"];
         };
     };

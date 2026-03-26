@@ -7,6 +7,7 @@ export const timelineTypes = ['all', 'image', 'video', 'audio', 'pdf', 'document
 export type TimelineType = typeof timelineTypes[number];
 export type DriveSearchFilters = { q: string; includeMetadata: boolean; type: DriveSearchType; sort: DriveSearchSort; page: number };
 export type TimelineFilters = { from: string; to: string; type: TimelineType; page: number };
+export type OutgoingFilters = { type: DriveSearchType; status: 'all' | 'active' | 'expired'; page: number };
 
 export function driveHref(folder: string, q = '', page = 1, view: DriveView = 'grid') {
   const params = new URLSearchParams();
@@ -43,7 +44,7 @@ export function fileHref(fileId: string) {
 }
 
 export function safeAppRedirect(value: string | string[] | null | undefined) {
-  if (typeof value !== 'string' || !(/^\/(drive(?:\/(?:search|timeline))?|trash|shared-with-me)(\?|$)/.test(value) || fileRouteRegex.test(value))) return '/drive';
+  if (typeof value !== 'string' || !(/^\/(drive(?:\/(?:search|timeline))?|trash|shared-with-me|shared-by-me)(\?|$)/.test(value) || fileRouteRegex.test(value))) return '/drive';
   return value;
 }
 
@@ -112,4 +113,19 @@ export function driveSearchHref(filters: DriveSearchFilters) {
 export function timelineHref(filters: TimelineFilters) {
   const search = timelineQuery(filters).toString();
   return search ? `/drive/timeline?${search}` : '/drive/timeline';
+}
+
+export function readOutgoingShares(params: ParamsReader): OutgoingFilters {
+  const type = params.get('type');
+  const status = params.get('status');
+  return { type: type === 'files' || type === 'folders' ? type : 'all', status: status === 'active' || status === 'expired' ? status : 'all', page: pageNumber(params.get('page')) };
+}
+
+export function outgoingSharesHref(filters: OutgoingFilters) {
+  const query = new URLSearchParams();
+  if (filters.type !== 'all') query.set('type', filters.type);
+  if (filters.status !== 'all') query.set('status', filters.status);
+  if (filters.page > 1) query.set('page', String(filters.page));
+  const search = query.toString();
+  return search ? `/shared-by-me?${search}` : '/shared-by-me';
 }

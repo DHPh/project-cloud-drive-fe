@@ -83,6 +83,14 @@ Trang [chi tiết tệp](#chi-tiết-tệp-và-metadata) dùng quyền đọc m�
 
 Người xem đọc [mô tả thư mục](#chi-tiết-tệp-và-metadata) khi mở được thư mục. Tab Thư mục tiếp tục dùng danh sách grant trực tiếp, người xem mở mục để đọc mô tả.
 
+## Đã chia sẻ
+
+Danh sách theo quyền cấp trực tiếp, với bộ lọc loại và trạng thái ở URL. Các mục còn hạn hoặc hết hạn cho mở tài nguyên, gia hạn và thu hồi theo tài khoản. QR được tạo tại trình duyệt từ cùng URL dùng cho nút sao chép. URL giữ luồng đăng nhập và dùng quyền hiện hành khi mở. Sau thao tác, làm mới danh sách và giữ focus hợp lý. Thử giờ hết hạn, bộ lọc, phân trang, điều hướng và dialog qua Playwright.
+
+## Quyền chỉnh sửa được chia sẻ
+
+Hộp thoại chia sẻ cho chủ chọn **Chỉ xem** hoặc **Chỉnh sửa** khi cấp quyền. Hiển thị mức quyền cùng hạn thực tế trong danh sách đã cấp. Màn hình nhận quyền dùng vai trò do backend trả về để mở đúng thao tác. Người sửa tệp dùng nút sửa tên, mô tả và thẻ trên chi tiết. Trong thư mục được sửa, hiển thị tải lên và sửa mô tả, cùng tài khoản chịu quota. Các thao tác riêng của chủ giữ điều kiện sở hữu.
+
 ## Phạm vi PWA
 
 Baseline ưu tiên trải nghiệm responsive. Khi bổ sung chế độ cài đặt, kiểm tra `100dvh`, safe area, nút quay lại từ deep link, input mobile tối thiểu 16 px, màn hình offline và thông báo cập nhật. Service worker chỉ được lưu tài nguyên công khai đã chọn. Tệp riêng, preview riêng và API xác thực nằm ngoài cache service worker. Chạy kiểm thử WebKit và kiểm tra standalone trên iOS trước khi phát hành PWA.

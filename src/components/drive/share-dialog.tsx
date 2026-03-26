@@ -11,23 +11,27 @@ import { useLocale } from '../providers';
 import { useShareExpiryRefresh } from '../use-share-expiry-refresh';
 
 type Props = {
-  item: FolderItem;
+  item: Pick<Extract<FolderItem, { kind: 'folder' }>, 'id' | 'kind' | 'name'> | Pick<Extract<FolderItem, { kind: 'file' }>, 'id' | 'kind' | 'originalName'>;
   itemLink: string;
   userId: string;
   trigger: HTMLElement;
   suspended: boolean;
   onDismiss: () => void;
   onExpired: () => void;
+  initialAction?: { kind: 'renew' | 'revoke'; grant: ShareGrant };
+  onChanged?: (message: string) => void;
+  restoreFallback?: () => void;
 };
 
-export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDismiss, onExpired }: Props) {
+export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDismiss, onExpired, initialAction, onChanged, restoreFallback }: Props) {
   const { text, locale } = useLocale();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
-  const [email, setEmail] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [editing, setEditing] = useState<ShareGrant | null>(null);
-  const [revoke, setRevoke] = useState<ShareGrant | null>(null);
+  const initialRenew = initialAction?.kind === 'renew' ? initialAction.grant : null;
+  const [email, setEmail] = useState(initialRenew?.recipientEmail ?? '');
+  const [expiry, setExpiry] = useState(initialRenew?.isActive ? expiryToVietnamInput(initialRenew.expiresAt) : '');
+  const [editing, setEditing] = useState<ShareGrant | null>(initialRenew);
+  const [revoke, setRevoke] = useState<ShareGrant | null>(initialAction?.kind === 'revoke' ? initialAction.grant : null);
   const [discard, setDiscard] = useState(false);
   const [pending, setPending] = useState<'save' | 'revoke' | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -48,14 +52,14 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
   const query = useQuery({
     queryKey: [...listKey, page],
     queryFn: ({ signal }) => listItemShares(item, page, signal),
-    enabled: !suspended,
+    enabled: !suspended && !initialAction,
     refetchOnMount: 'always',
     refetchOnWindowFocus: 'always',
   });
-  const items = query.data?.data.items ?? [];
-  const pages = query.data?.pagination.totalPages ?? 0;
+  const items = initialAction ? [initialAction.grant] : query.data?.data.items ?? [];
+  const pages = initialAction ? 0 : query.data?.pagination.totalPages ?? 0;
   const canSave = !pending && !revoke && !discard;
-  useShareExpiryRefresh(suspended ? undefined : query.data?.data.items, query.refetch);
+  useShareExpiryRefresh(suspended || initialAction ? undefined : query.data?.data.items, query.refetch);
 
   useEffect(() => () => request.current?.abort(), []);
   useEffect(() => {
@@ -90,6 +94,13 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
     expiryInput.current?.focus();
   }
 
+  async function refreshGrants() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: listKey }),
+      queryClient.invalidateQueries({ queryKey: ['outgoing-shares', userId] }),
+    ]);
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSave || request.current) return;
@@ -108,10 +119,19 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
     try {
       const result = await grantItemShare(item, { email: email.trim(), expiresAt: explicitExpiry }, controller.signal);
       if (controller.signal.aborted) return;
+      const message = `${text.shareGranted} ${dateFormat.format(new Date(result.expiresAt))} (${text.vietnamTime}).`;
+      if (initialAction) {
+        await refreshGrants();
+        if (!controller.signal.aborted) {
+          onChanged?.(message);
+          onDismiss();
+        }
+        return;
+      }
       resetForm();
       if (!editing?.isActive) setPage(1);
-      setNotice(`${text.shareGranted} ${dateFormat.format(new Date(result.expiresAt))} (${text.vietnamTime}).`);
-      await queryClient.invalidateQueries({ queryKey: listKey });
+      setNotice(message);
+      await refreshGrants();
       emailInput.current?.focus();
     } catch (error) {
       if (!controller.signal.aborted) {
@@ -126,6 +146,7 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
 
   function cancelRevoke() {
     if (!revoke || request.current) return;
+    if (initialAction) { onDismiss(); return; }
     const triggerId = `share-revoke-${revoke.recipientId}`;
     setRevoke(null);
     setRevokeError(null);
@@ -145,11 +166,19 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
     try {
       await revokeItemShare(item, recipientId, controller.signal);
       if (controller.signal.aborted) return;
+      if (initialAction) {
+        await refreshGrants();
+        if (!controller.signal.aborted) {
+          onChanged?.(text.shareRevoked);
+          onDismiss();
+        }
+        return;
+      }
       if (editing?.recipientId === recipientId) resetForm();
       setRevoke(null);
       if (items.length === 1 && page > 1) setPage(page - 1);
       setNotice(text.shareRevoked);
-      await queryClient.invalidateQueries({ queryKey: listKey });
+      await refreshGrants();
       requestAnimationFrame(() => {
         const next = neighbor ? document.getElementById(`share-edit-${neighbor.recipientId}`) : null;
         (next ?? emailInput.current)?.focus();
@@ -178,13 +207,15 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
 
   return (
     <Overlay
-      open={!suspended} testId="share-dialog" title={folder ? text.shareFolderTitle : text.shareTitle} description={folder ? text.shareFolderDescription : text.shareDescription}
-      initialFocus={emailInput} onDismiss={pending ? undefined : dismiss} restoreFocus={trigger}
-      restoreFallback={() => document.getElementById('drive-main')?.focus()}
+      open={!suspended} testId="share-dialog"
+      title={initialAction ? initialAction.kind === 'renew' ? text.renewShare : text.shareRevoke : folder ? text.shareFolderTitle : text.shareTitle}
+      description={initialAction?.kind === 'revoke' ? text.singleRevokeDescription : folder ? text.shareFolderDescription : text.shareDescription}
+      initialFocus={initialAction ? initialAction.kind === 'revoke' ? revokeCancel : expiryInput : emailInput} onDismiss={pending ? undefined : dismiss} restoreFocus={trigger}
+      restoreFallback={restoreFallback ?? (() => document.getElementById('drive-main')?.focus())}
     >
       <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
         <p className="break-words text-sm font-semibold" title={itemName}>{itemName}</p>
-        <div>
+        {!initialAction && <div>
           <label htmlFor="share-link" className="mb-1 block text-sm font-medium">{folder ? text.shareFolderLink : text.shareLink}</label>
           <div className="flex flex-wrap gap-2 sm:flex-nowrap">
             <input ref={linkInput} id="share-link" data-testid="share-link" className="field min-w-0 flex-1" value={itemLink} readOnly />
@@ -192,8 +223,8 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
               <ClipboardDocumentIcon aria-hidden="true" className="h-4 w-4" />{text.shareCopy}
             </button>
           </div>
-        </div>
-        <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border border-gray-200 p-3">
+        </div>}
+        {initialAction?.kind !== 'revoke' && <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-lg border border-gray-200 p-3">
           <div>
             <label htmlFor="share-email" className="mb-1 block text-sm font-medium">{text.shareEmail}</label>
             <input ref={emailInput} id="share-email" data-testid="share-email" type="email" autoComplete="off" required maxLength={254} spellCheck={false}
@@ -207,17 +238,17 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
           </div>
           {saveError && <p data-testid="share-error" role="alert" className="text-sm text-red-800">{saveError}</p>}
           <div className="flex flex-wrap justify-end gap-2">
-            {editing && <button type="button" className="button button-secondary min-h-11" disabled={Boolean(pending)} onClick={resetForm}>{text.cancel}</button>}
+            {editing && <button type="button" className="button button-secondary min-h-11" disabled={Boolean(pending)} onClick={initialAction ? dismiss : resetForm}>{text.cancel}</button>}
             <button type="submit" data-testid="share-submit" className="button button-primary min-h-11 aria-disabled:opacity-60" aria-disabled={!canSave} aria-busy={pending === 'save'}>
               {pending === 'save' ? text.shareSaving : editing ? text.shareSaveExpiry : text.shareGrant}
             </button>
           </div>
-        </form>
+        </form>}
         <p role="status" data-testid="share-status" className={notice ? 'rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-900' : 'sr-only'}>{notice}</p>
-        <section aria-labelledby="share-recipient-heading" className="space-y-2">
+        {initialAction?.kind !== 'renew' && <section aria-labelledby="share-recipient-heading" className="space-y-2">
           <h3 id="share-recipient-heading" className="text-sm font-semibold">{text.shareRecipients}</h3>
-          {query.isPending && !suspended && <p role="status" data-testid="share-loading" className="text-sm text-gray-600">{text.loading}</p>}
-          {query.isError && !suspended && (
+          {!initialAction && query.isPending && !suspended && <p role="status" data-testid="share-loading" className="text-sm text-gray-600">{text.loading}</p>}
+          {!initialAction && query.isError && !suspended && (
             <div role="alert" className="space-y-2 rounded-lg bg-red-50 p-3 text-sm text-red-800">
               <p>{localizedError(query.error, text)}</p>
               <button type="button" data-testid="share-retry" className="button button-secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>
@@ -264,7 +295,7 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
               </div>
             </div>
           )}
-        </section>
+        </section>}
         {discard && (
           <div className="space-y-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-950">
             <p>{text.discardShare}</p>

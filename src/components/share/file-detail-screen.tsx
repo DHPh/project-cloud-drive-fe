@@ -12,12 +12,14 @@ import { useAccountSession } from '../account-session';
 import { DriveLayout } from '../drive/drive-layout';
 import { useLocale } from '../providers';
 import { FileMetadataDialog } from './file-metadata-dialog';
+import { FilePreview } from './file-preview';
 
 export function FileDetailScreen({ initialUser, fileId }: { initialUser: User; fileId: string }) {
   const { user, expired, expire, signingOut, signOut, signOutError, sessionDialog } = useAccountSession(initialUser, fileHref(fileId));
   const { text, locale } = useLocale();
   const [editing, setEditing] = useState<{ trigger: HTMLElement; file: FileItem } | null>(null);
   const [saved, setSaved] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const queryClient = useQueryClient();
   const queryKey = ['file', user.id, fileId] as const;
   const query = useQuery({
@@ -78,11 +80,17 @@ export function FileDetailScreen({ initialUser, fileId }: { initialUser: User; f
               </dl>
               <div className="flex flex-wrap gap-2">
                 <a data-testid="file-detail-download" href={downloadUrl(file.id)} download={file.originalName} className="button button-primary min-h-11"><ArrowDownTrayIcon aria-hidden="true" className="h-5 w-5" />{text.download}</a>
+                <button type="button" data-testid="file-preview-toggle" aria-expanded={previewOpen} aria-controls="file-preview-panel" className="button button-secondary min-h-11" onClick={() => setPreviewOpen(!previewOpen)}>
+                  {previewOpen ? (locale === 'vi' ? 'Đóng xem trước' : 'Close preview') : (locale === 'vi' ? 'Xem trước' : 'Preview')}
+                </button>
                 {ownerAccess && <button data-testid="file-metadata-open" type="button" className="button button-secondary min-h-11" onClick={(event) => {
                   setSaved(false);
                   setEditing({ trigger: event.currentTarget, file });
                 }}><PencilSquareIcon aria-hidden="true" className="h-5 w-5" />{text.editFileMetadata}</button>}
               </div>
+              {previewOpen && <section id="file-preview-panel" aria-label={locale === 'vi' ? 'Xem trước tệp' : 'File preview'} className="border-t border-gray-200 pt-4">
+                <FilePreview fileId={file.id} name={file.originalName} onExpired={expire} />
+              </section>}
             </article>
           )}
         </div>

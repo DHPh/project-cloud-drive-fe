@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Cloud Drive API
-  version: 0.9.0
+  version: 0.10.0
   description: >-
     Browser API for sign-in, folder management, upload, file editing, download, file and folder trash, and sharing.
     State-changing browser requests require the configured application Origin.
@@ -325,6 +325,38 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /folders/{folderId}/download:
+    get:
+      operationId: downloadFolderArchive
+      tags: [Folders]
+      summary: Download an authorized folder tree as ZIP
+      description: Includes active descendants, ready files and empty folders. Stops the download if an object becomes unavailable or permission is lost while streaming.
+      parameters:
+        - $ref: '#/components/parameters/FolderUuid'
+      responses:
+        '200':
+          description: ZIP archive with safe Unicode archive paths.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: ARCHIVE_TOO_LARGE. Choose a smaller folder (up to 500 files, 500 folders and 100 MiB of file content).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /files:
     post:
       operationId: uploadFile
@@ -479,6 +511,55 @@ paths:
         '503':
           $ref: '#/components/responses/StorageUnavailable'
 
+  /files/{fileId}/preview:
+    get:
+      operationId: previewFile
+      tags: [Files]
+      summary: Read supported content for a private preview
+      description: Checks the current file read permission. Returns raster images, PDF or UTF-8 plain text only. Responses are private and use a sandbox content-security policy. Limits are 512 KiB for text and 10 MiB otherwise.
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: Validated preview bytes.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+            image/gif:
+              schema: { type: string, format: binary }
+            application/pdf:
+              schema: { type: string, format: binary }
+            text/plain:
+              schema: { type: string }
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: PREVIEW_TOO_LARGE. Download remains available if permitted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '415':
+          description: PREVIEW_UNSUPPORTED. Download remains available if permitted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/StorageUnavailable'
   /files/{fileId}/trash:
     post:
       operationId: trashFile
@@ -698,6 +779,37 @@ paths:
           $ref: '#/components/responses/SessionRequired'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /shared-by-me:
+    get:
+      operationId: listOutgoingShares
+      tags: [Sharing]
+      summary: List direct grants issued by the current account
+      description: Returns grants on active resources owned by the account. Includes expired grants unless filtered. Multiple recipient grants for an item have separate rows. Sorts by newest grantedAt, kind, resource ID and recipient ID.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: type
+          in: query
+          schema: { type: string, enum: [all, files, folders], default: all }
+        - name: status
+          in: query
+          schema: { type: string, enum: [all, active, expired], default: all }
+      responses:
+        '200':
+          description: A page of outgoing grants.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutgoingSharesResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
         '500':
           $ref: '#/components/responses/InternalError'
   /files/{fileId}/shares:
@@ -1732,6 +1844,29 @@ components:
         isActive:
           type: boolean
           description: Whether the grant is valid at the time the response was generated.
+    OutgoingSharesResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success:
+          $ref: '#/components/schemas/Success'
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                required: [kind, resourceId, resourceName, grant]
+                properties:
+                  kind: { type: string, enum: [file, folder] }
+                  resourceId: { type: string, format: uuid }
+                  resourceName: { type: string }
+                  grant:
+                    $ref: '#/components/schemas/ShareGrant'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
     FileShareResponse:
       type: object
       required: [success, data]
