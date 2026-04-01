@@ -87,6 +87,12 @@ test('SHARE-03 manages direct grants and authenticates ordinary file and folder 
   await page.getByTestId('outgoing-type').selectOption('files')
   await page.getByTestId('outgoing-status-filter').selectOption('expired')
   await expect(page).toHaveURL(url => url.searchParams.get('type') === 'files' && url.searchParams.get('status') === 'expired')
+  await expect.poll(async () => {
+    const response = await owner.get(`${api}/shared-by-me`, { params: { type: 'files', status: 'expired', limit: 100 } })
+    expect(response.status()).toBe(200)
+    const { data } = await response.json() as components['schemas']['OutgoingSharesResponse']
+    return data.items.some(({ resourceId, grant }) => resourceId === file.id && grant.recipientId === reviewerId)
+  }).toBe(true)
   await page.reload()
   const expired = grantRow(page, file.id, reviewerId)
   await expect(expired).toHaveAttribute('data-grant-status', 'expired')

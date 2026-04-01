@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Cloud Drive API
-  version: 0.10.0
+  version: 0.13.0
   description: >-
     Browser API for sign-in, folder management, upload, file editing, download, file and folder trash, and sharing.
     State-changing browser requests require the configured application Origin.
@@ -15,6 +15,9 @@ tags:
   - name: Files
   - name: Trash
   - name: Sharing
+  - name: Boards
+  - name: Account
+  - name: Admin
 
 paths:
   /auth/login:
@@ -120,6 +123,254 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalError'
+  /auth/accept-invite:
+    post:
+      operationId: acceptAccountInvite
+      tags: [Account]
+      summary: Set a password and create the invited account
+      description: Consumes the one-time link and creates a user. The user signs in separately.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AcceptInviteRequest' }
+      responses:
+        '201':
+          description: The new account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/AccountLinkNotFound' }
+        '409': { $ref: '#/components/responses/AccountConflict' }
+        '410': { $ref: '#/components/responses/AccountLinkExpired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /auth/reset-password:
+    post:
+      operationId: resetAccountPassword
+      tags: [Account]
+      summary: Set a password from a one-time admin link
+      description: Consumes the link and revokes all sessions on the target account.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResetPasswordRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/PasswordChanged' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/AccountLinkNotFound' }
+        '409': { $ref: '#/components/responses/AccountConflict' }
+        '410': { $ref: '#/components/responses/AccountLinkExpired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /account:
+    get:
+      operationId: getAccount
+      tags: [Account]
+      summary: Read the account profile and storage usage
+      responses:
+        '200': { $ref: '#/components/responses/AccountProfile' }
+        '401': { $ref: '#/components/responses/SessionRequired' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    patch:
+      operationId: updateAccount
+      tags: [Account]
+      summary: Update the signed-in account's display name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAccountRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/AccountProfile' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/SessionRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /account/password:
+    post:
+      operationId: changeAccountPassword
+      tags: [Account]
+      summary: Change the signed-in account's password and revoke all its sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+      responses:
+        '200':
+          description: The password changed. The browser session cookie is cleared.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PasswordChangedResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/SessionRequired' }
+        '403':
+          description: The request origin is disallowed or the current password is incorrect (`CURRENT_PASSWORD_INVALID`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /admin/invites:
+    get:
+      operationId: listAccountInvites
+      tags: [Admin]
+      summary: List invitations, most recently created first
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema: { type: string, enum: [all, active, expired, used, revoked], default: all }
+      responses:
+        '200':
+          description: A page of invitation statuses without tokens.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountInviteListResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/SessionRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      operationId: createAccountInvite
+      tags: [Admin]
+      summary: Issue a 24-hour invite to the given email address
+      description: The token is returned only on issuance. Issuing another invite revokes the prior active invite for that address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInviteRequest' }
+      responses:
+        '201':
+          description: The invite and its one-time token.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountInviteIssuedResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/SessionRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/AccountConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /admin/invites/{inviteId}:
+    delete:
+      operationId: revokeAccountInvite
+      tags: [Admin]
+      summary: Revoke an outstanding invitation
+      parameters:
+        - name: inviteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The invite is no longer valid. Repeated revocation returns the same result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RevokedResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/SessionRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/AccountLinkNotFound' }
+        '409': { $ref: '#/components/responses/AccountConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [Admin]
+      summary: List account status, role and storage usage in email order
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: q
+          in: query
+          description: Case-insensitive literal substring of name or email.
+          schema: { type: string, maxLength: 255, default: '' }
+      responses:
+        '200':
+          description: A page of user accounts.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUserListResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/SessionRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /admin/users/{userId}:
+    patch:
+      operationId: updateAdminUser
+      tags: [Admin]
+      summary: Change an account's role, status or quota
+      description: Omitted fields stay unchanged. The last active administrator must remain active and cannot be demoted.
+      parameters:
+        - $ref: '#/components/parameters/AdminUserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAdminUserRequest' }
+      responses:
+        '200':
+          description: The current account after the update.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUserResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/SessionRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/AccountConflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /admin/users/{userId}/reset-password:
+    post:
+      operationId: issueAdminPasswordReset
+      tags: [Admin]
+      summary: Issue a 30-minute reset link for the account
+      description: Issuance replaces any prior active reset link. The token is returned only on issuance.
+      parameters:
+        - $ref: '#/components/parameters/AdminUserId'
+      responses:
+        '201':
+          description: The one-time token and its expiry.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PasswordResetIssuedResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/SessionRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /admin/audit:
+    get:
+      operationId: listAdminAudit
+      tags: [Admin]
+      summary: List recorded account administration actions, most recent first
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of successful administrative changes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminAuditListResponse' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/SessionRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
   /drive/search:
     get:
       operationId: searchDrive
@@ -234,7 +485,8 @@ paths:
       tags: [Folders]
       summary: Edit folder metadata or move a folder
       description: >-
-        Only the owner can update the folder. Omitted fields keep their current values.
+        The owner can update name, description and parentId. A recipient with effective editor access
+        can update the description alone. Omitted fields keep their current values.
         Set description to null to clear it.
         A null parentId moves it to the root. The folder cannot move into itself or a
         descendant. File and folder IDs, object data and file sharing grants are preserved.
@@ -287,6 +539,7 @@ paths:
         Files in Trash are excluded from listing and search.
         With type=folders, only folders count toward total or pagination.
         A recipient can list a folder with an active share on it or an ancestor.
+        The highest active grant determines viewer or editor access.
         Recipient breadcrumbs are limited to folders that account may view.
       parameters:
         - $ref: '#/components/parameters/FolderId'
@@ -362,7 +615,9 @@ paths:
       operationId: uploadFile
       tags: [Files]
       summary: Upload a file
-      description: The uploaded file is private by default.
+      description: >-
+        Uploads into the account's root or an active folder it owns or can edit. A file uploaded by an
+        editor belongs to the folder owner and uses that owner's quota. Upload completion checks current access again.
       requestBody:
         required: true
         content:
@@ -415,7 +670,7 @@ paths:
       summary: Read file information
       description: >-
         The owner or a recipient with an unexpired direct or inherited grant can read a ready, active file.
-        The response identifies whether the current account is the owner or a viewer.
+        The response identifies owner access or the highest active viewer or editor grant.
       parameters:
         - $ref: '#/components/parameters/FileId'
       responses:
@@ -443,6 +698,7 @@ paths:
       description: >-
         At least one field is required. Omitted fields keep their current values.
         Set description to null or tags to an empty array to clear them.
+        An editor can change originalName, description and tags.
         An owner can change folderId to an owned folder or null for their root.
         Moving keeps file ID, object, quota and direct grants. Inherited access follows the new location.
         Files in Trash return 404.
@@ -1085,6 +1341,486 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /boards:
+    get:
+      operationId: listBoards
+      tags: [Boards]
+      summary: List boards owned by the account
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardsResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: createBoard
+      tags: [Boards]
+      summary: Create a private board draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoardCreateRequest'
+      responses:
+        '201':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardSummaryResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /boards/{boardId}:
+    get:
+      operationId: getBoard
+      tags: [Boards]
+      summary: Read an owned board and its items
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardDetailResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      operationId: updateBoard
+      tags: [Boards]
+      summary: Edit and publish an owned board
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoardUpdateRequest'
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardSummaryResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteBoard
+      tags: [Boards]
+      summary: Remove an owned board
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardDeletedResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /boards/{boardId}/items:
+    post:
+      operationId: addBoardItem
+      tags: [Boards]
+      summary: Attach an active owned file as an unpublished item
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoardAttachRequest'
+      responses:
+        '201':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardItemResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '409':
+          description: The file is already attached, or the board has reached its item limit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /boards/{boardId}/items/{itemId}:
+    patch:
+      operationId: updateBoardItem
+      tags: [Boards]
+      summary: Change item publication and original download settings
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoardItemUpdateRequest'
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardItemResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: deleteBoardItem
+      tags: [Boards]
+      summary: Remove an item from an owned board
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardDeletedResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /boards/{boardId}/items/order:
+    put:
+      operationId: reorderBoardItems
+      tags: [Boards]
+      summary: Write the complete ordered set of board item IDs
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoardReorderRequest'
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardReorderResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /public/boards:
+    get:
+      operationId: listPublicBoards
+      tags: [Boards]
+      summary: List discoverable boards
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBoardsResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /public/boards/{publicId}:
+    get:
+      operationId: getPublicBoard
+      tags: [Boards]
+      summary: Read a published board and its visible items
+      security: []
+      parameters:
+        - name: publicId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBoardDetailResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /public/boards/{publicId}/items/{itemId}/preview:
+    get:
+      operationId: getPublicBoardPreview
+      tags: [Boards]
+      summary: Read a safe text excerpt from a published item
+      security: []
+      parameters:
+        - name: publicId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardPreviewResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/StorageUnavailable'
+  /public/boards/{publicId}/items/{itemId}/download:
+    get:
+      operationId: downloadPublicBoardItem
+      tags: [Boards]
+      summary: Download the original when the owner enabled download
+      security: []
+      parameters:
+        - name: publicId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/StorageUnavailable'
+  /admin/boards:
+    get:
+      operationId: listModerationBoards
+      tags: [Boards]
+      summary: List public boards for moderation
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationBoardsResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /admin/boards/{boardId}/hide:
+    post:
+      operationId: hidePublicBoard
+      tags: [Boards]
+      summary: Persistently hide a public board through moderation
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Board operation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/PrivateCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HiddenBoardResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/SessionRequired'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     sessionCookie:
@@ -1094,6 +1830,11 @@ components:
       description: Server-issued opaque session value for the same-origin browser.
 
   parameters:
+    AdminUserId:
+      name: userId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
     FolderId:
       name: folderId
       in: path
@@ -1143,6 +1884,49 @@ components:
         enum: ['private, no-store']
 
   responses:
+    AccountProfile:
+      description: The current profile and storage use.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AccountProfileResponse' }
+    PasswordChanged:
+      description: The password changed and the account's sessions were invalidated.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/PasswordChangedResponse' }
+    AccountConflict:
+      description: >-
+        The link was already used or revoked (ACCOUNT_LINK_USED, ACCOUNT_LINK_REVOKED), the email is already registered
+        (ACCOUNT_EMAIL_CONFLICT), the quota is below storage already used (QUOTA_BELOW_USAGE), or this is the last active
+        administrator (LAST_ACTIVE_ADMIN).
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    AccountLinkNotFound:
+      description: The link does not exist or is for a different operation (ACCOUNT_LINK_NOT_FOUND).
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    AccountLinkExpired:
+      description: The link has expired (ACCOUNT_LINK_EXPIRED).
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/PrivateCache'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
     FolderMutationConflict:
       description: >-
         FOLDER_NAME_CONFLICT indicates an exact duplicate name in the destination.
@@ -1374,7 +2158,7 @@ components:
           minLength: 1
     User:
       type: object
-      required: [id, email, name]
+      required: [id, email, name, role]
       properties:
         id:
           type: string
@@ -1384,6 +2168,8 @@ components:
           format: email
         name:
           type: string
+        role:
+          $ref: '#/components/schemas/AccountRole'
     UserResponse:
       type: object
       required: [success, data]
@@ -1392,6 +2178,202 @@ components:
           $ref: '#/components/schemas/Success'
         data:
           $ref: '#/components/schemas/User'
+    AccountRole:
+      type: string
+      enum: [user, admin]
+    AccountName:
+      type: string
+      minLength: 1
+      maxLength: 120
+    AccountPassword:
+      type: string
+      format: password
+      minLength: 12
+      maxLength: 1024
+    AccountLinkToken:
+      type: string
+      pattern: '^[A-Za-z0-9_-]{43}$'
+    StorageBytes:
+      type: integer
+      format: int64
+      minimum: 0
+      maximum: 9007199254740991
+    AcceptInviteRequest:
+      type: object
+      additionalProperties: false
+      required: [token, password, name]
+      properties:
+        token: { $ref: '#/components/schemas/AccountLinkToken' }
+        password: { $ref: '#/components/schemas/AccountPassword' }
+        name: { $ref: '#/components/schemas/AccountName' }
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [token, password]
+      properties:
+        token: { $ref: '#/components/schemas/AccountLinkToken' }
+        password: { $ref: '#/components/schemas/AccountPassword' }
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, password]
+      properties:
+        currentPassword: { type: string, format: password, minLength: 1, maxLength: 1024 }
+        password: { $ref: '#/components/schemas/AccountPassword' }
+    UpdateAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { $ref: '#/components/schemas/AccountName' }
+    AccountStorage:
+      type: object
+      required: [usedBytes, trashedBytes, quotaBytes]
+      properties:
+        usedBytes: { $ref: '#/components/schemas/StorageBytes' }
+        trashedBytes: { $ref: '#/components/schemas/StorageBytes' }
+        quotaBytes: { $ref: '#/components/schemas/StorageBytes' }
+    AccountProfileResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data:
+          type: object
+          required: [user, storage]
+          properties:
+            user: { $ref: '#/components/schemas/User' }
+            storage: { $ref: '#/components/schemas/AccountStorage' }
+    PasswordChangedResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data:
+          type: object
+          required: [passwordChanged]
+          properties:
+            passwordChanged: { type: boolean, enum: [true] }
+    CreateInviteRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+    AccountInvite:
+      type: object
+      required: [id, email, status, createdAt, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        status: { type: string, enum: [active, expired, used, revoked] }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    AccountInviteListResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/AccountInvite' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    AccountInviteIssuedResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data:
+          type: object
+          required: [invite, token]
+          properties:
+            invite: { $ref: '#/components/schemas/AccountInvite' }
+            token: { $ref: '#/components/schemas/AccountLinkToken' }
+    RevokedResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data:
+          type: object
+          required: [revoked]
+          properties:
+            revoked: { type: boolean, enum: [true] }
+    AdminUser:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          required: [disabled, quotaBytes, usedBytes]
+          properties:
+            disabled: { type: boolean }
+            quotaBytes: { $ref: '#/components/schemas/StorageBytes' }
+            usedBytes: { $ref: '#/components/schemas/StorageBytes' }
+    UpdateAdminUserRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        role: { $ref: '#/components/schemas/AccountRole' }
+        disabled: { type: boolean }
+        quotaBytes: { $ref: '#/components/schemas/StorageBytes' }
+    AdminUserResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/AdminUser' }
+    AdminUserListResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/AdminUser' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    PasswordResetIssuedResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data:
+          type: object
+          required: [token, expiresAt]
+          properties:
+            token: { $ref: '#/components/schemas/AccountLinkToken' }
+            expiresAt: { type: string, format: date-time }
+    AdminAuditEntry:
+      type: object
+      required: [id, actorId, actorEmail, action, targetId, targetEmail, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        actorId: { type: string, format: uuid }
+        actorEmail: { type: string, format: email }
+        action: { type: string }
+        targetId: { type: string, format: uuid, nullable: true }
+        targetEmail: { type: string, format: email, nullable: true }
+        createdAt: { type: string, format: date-time }
+    AdminAuditListResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/AdminAuditEntry' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
     FolderReference:
       type: string
       pattern: '^(root|[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$'
@@ -1571,7 +2553,7 @@ components:
           properties:
             access:
               type: string
-              enum: [owner, viewer]
+              enum: [owner, editor, viewer]
               description: Current account access for this folder view.
             folder:
               description: Current folder details or null for root.
@@ -1818,14 +2800,20 @@ components:
         email:
           type: string
           format: email
+        access:
+          $ref: '#/components/schemas/ShareAccess'
         expiresAt:
           type: string
           format: date-time
           nullable: true
           description: Future expiration with a time zone. An omitted or null value applies the default policy.
+    ShareAccess:
+      type: string
+      enum: [viewer, editor]
+      description: On grant updates, omitting access preserves a prior level. New grants default to viewer.
     ShareGrant:
       type: object
-      required: [recipientId, recipientEmail, recipientName, grantedAt, expiresAt, isActive]
+      required: [recipientId, recipientEmail, recipientName, grantedAt, expiresAt, isActive, access]
       properties:
         recipientId:
           type: string
@@ -1835,6 +2823,8 @@ components:
           format: email
         recipientName:
           type: string
+        access:
+          $ref: '#/components/schemas/ShareAccess'
         grantedAt:
           type: string
           format: date-time
@@ -1970,6 +2960,213 @@ components:
             revoked:
               type: boolean
               enum: [true]
+    BoardSummary:
+      type: object
+      required: [id, publicId, title, description, visibility, hiddenAt, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        publicId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, nullable: true, maxLength: 2000 }
+        visibility: { type: string, enum: [draft, link, discoverable] }
+        hiddenAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PublicBoard:
+      type: object
+      required: [publicId, title, description]
+      properties:
+        publicId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, nullable: true, maxLength: 2000 }
+    PublicBoardItem:
+      type: object
+      required: [id, originalName, mimeType, size, allowDownload, canPreview]
+      properties:
+        id: { type: string, format: uuid }
+        originalName: { type: string }
+        mimeType: { type: string }
+        size: { type: integer, format: int64, minimum: 0 }
+        allowDownload: { type: boolean }
+        canPreview: { type: boolean }
+    OwnedBoardItem:
+      type: object
+      required: [id, originalName, mimeType, size, allowDownload, canPreview, fileId, position, published, available]
+      properties:
+        id: { type: string, format: uuid }
+        originalName: { type: string }
+        mimeType: { type: string }
+        size: { type: integer, format: int64, minimum: 0 }
+        allowDownload: { type: boolean }
+        canPreview: { type: boolean }
+        fileId: { type: string, format: uuid }
+        position: { type: integer, minimum: 0 }
+        published: { type: boolean }
+        available: { type: boolean }
+    BoardDetail:
+      type: object
+      required: [id, publicId, title, description, visibility, hiddenAt, createdAt, updatedAt, items]
+      properties:
+        id: { type: string, format: uuid }
+        publicId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, nullable: true, maxLength: 2000 }
+        visibility: { type: string, enum: [draft, link, discoverable] }
+        hiddenAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        items: { type: array, items: { $ref: '#/components/schemas/OwnedBoardItem' } }
+    PublicBoardDetail:
+      type: object
+      required: [publicId, title, description, items]
+      properties:
+        publicId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, nullable: true, maxLength: 2000 }
+        items: { type: array, items: { $ref: '#/components/schemas/PublicBoardItem' } }
+    ModerationBoard:
+      type: object
+      required: [id, publicId, title, visibility, hiddenAt]
+      properties:
+        id: { type: string, format: uuid }
+        publicId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        visibility: { type: string, enum: [draft, link, discoverable] }
+        hiddenAt: { type: string, format: date-time, nullable: true }
+    BoardCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, nullable: true, maxLength: 2000 }
+    BoardUpdateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, nullable: true, maxLength: 2000 }
+        visibility: { type: string, enum: [draft, link, discoverable] }
+    BoardAttachRequest:
+      type: object
+      additionalProperties: false
+      required: [fileId]
+      properties:
+        fileId: { type: string, format: uuid }
+    BoardItemUpdateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        published: { type: boolean }
+        allowDownload: { type: boolean }
+    BoardReorderRequest:
+      type: object
+      additionalProperties: false
+      required: [itemIds]
+      properties:
+        itemIds: { type: array, maxItems: 100, uniqueItems: true, items: { type: string, format: uuid } }
+    BoardDeleted:
+      type: object
+      required: [deleted]
+      properties:
+        deleted: { type: boolean, enum: [true] }
+    BoardPreview:
+      type: object
+      required: [text, truncated]
+      properties:
+        text: { type: string }
+        truncated: { type: boolean }
+    HiddenBoard:
+      type: object
+      required: [hiddenAt]
+      properties:
+        hiddenAt: { type: string, format: date-time }
+    BoardsResponseData:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/BoardSummary' } }
+    BoardsResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/BoardsResponseData' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    PublicBoardsResponseData:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PublicBoard' } }
+    PublicBoardsResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/PublicBoardsResponseData' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    ModerationBoardsResponseData:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ModerationBoard' } }
+    ModerationBoardsResponse:
+      type: object
+      required: [success, data, pagination]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/ModerationBoardsResponseData' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    BoardSummaryResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/BoardSummary' }
+    BoardDetailResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/BoardDetail' }
+    BoardItemResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/OwnedBoardItem' }
+    BoardDeletedResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/BoardDeleted' }
+    BoardReorderResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/BoardReorderRequest' }
+    PublicBoardDetailResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/PublicBoardDetail' }
+    BoardPreviewResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/BoardPreview' }
+    HiddenBoardResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { $ref: '#/components/schemas/Success' }
+        data: { $ref: '#/components/schemas/HiddenBoard' }
     FileResponse:
       type: object
       required: [success, data]
@@ -1992,4 +3189,4 @@ components:
               properties:
                 access:
                   type: string
-                  enum: [owner, viewer]
+                  enum: [owner, editor, viewer]

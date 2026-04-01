@@ -107,6 +107,7 @@ export function OutgoingSharesScreen({ initialUser }: { initialUser: User }) {
                     <Link data-testid="outgoing-item-link" href={itemHref(row)} prefetch={false} className="inline-block rounded-sm text-sm font-semibold text-primary-800 hover:underline [overflow-wrap:anywhere]">{row.resourceName}</Link>
                     <p className="mt-1 text-sm text-gray-700 [overflow-wrap:anywhere]">{row.kind === 'folder' ? text.folder : text.files} · {row.grant.recipientName} ({row.grant.recipientEmail})</p>
                     <p className="mt-1 text-sm text-gray-700">{text.expiresAt} <time data-testid="outgoing-expiry" dateTime={row.grant.expiresAt}>{timeFormat.format(new Date(row.grant.expiresAt))}</time> ({text.vietnamTime})</p>
+                    <p data-testid="outgoing-access" className="mt-1 text-sm text-gray-700">{row.grant.access === 'editor' ? text.editingAccess : text.readOnly}</p>
                     <p className={`mt-2 w-fit rounded-full px-2 py-1 text-xs ${row.grant.isActive ? 'bg-emerald-50 text-emerald-900' : 'bg-gray-100 text-gray-700'}`}>{row.grant.isActive ? text.shareActive : text.shareExpired}</p>
                   </div>
                   <div className="flex flex-wrap gap-2 sm:max-w-[50%] sm:justify-end">

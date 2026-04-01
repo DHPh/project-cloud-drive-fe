@@ -58,6 +58,193 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/accept-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a password and create the invited account
+         * @description Consumes the one-time link and creates a user. The user signs in separately.
+         */
+        post: operations["acceptAccountInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a password from a one-time admin link
+         * @description Consumes the link and revokes all sessions on the target account.
+         */
+        post: operations["resetAccountPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the account profile and storage usage */
+        get: operations["getAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update the signed-in account's display name */
+        patch: operations["updateAccount"];
+        trace?: never;
+    };
+    "/account/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change the signed-in account's password and revoke all its sessions */
+        post: operations["changeAccountPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List invitations, most recently created first */
+        get: operations["listAccountInvites"];
+        put?: never;
+        /**
+         * Issue a 24-hour invite to the given email address
+         * @description The token is returned only on issuance. Issuing another invite revokes the prior active invite for that address.
+         */
+        post: operations["createAccountInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/invites/{inviteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke an outstanding invitation */
+        delete: operations["revokeAccountInvite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List account status, role and storage usage in email order */
+        get: operations["listAdminUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change an account's role, status or quota
+         * @description Omitted fields stay unchanged. The last active administrator must remain active and cannot be demoted.
+         */
+        patch: operations["updateAdminUser"];
+        trace?: never;
+    };
+    "/admin/users/{userId}/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a 30-minute reset link for the account
+         * @description Issuance replaces any prior active reset link. The token is returned only on issuance.
+         */
+        post: operations["issueAdminPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recorded account administration actions, most recent first */
+        get: operations["listAdminAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/drive/search": {
         parameters: {
             query?: never;
@@ -133,7 +320,7 @@ export interface paths {
         head?: never;
         /**
          * Edit folder metadata or move a folder
-         * @description Only the owner can update the folder. Omitted fields keep their current values. Set description to null to clear it. A null parentId moves it to the root. The folder cannot move into itself or a descendant. File and folder IDs, object data and file sharing grants are preserved. If all fields are unchanged, returns the existing folder.
+         * @description The owner can update name, description and parentId. A recipient with effective editor access can update the description alone. Omitted fields keep their current values. Set description to null to clear it. A null parentId moves it to the root. The folder cannot move into itself or a descendant. File and folder IDs, object data and file sharing grants are preserved. If all fields are unchanged, returns the existing folder.
          */
         patch: operations["updateFolder"];
         trace?: never;
@@ -147,7 +334,7 @@ export interface paths {
         };
         /**
          * List direct children of a folder
-         * @description Use root for the signed-in user's root. Pagination applies to the combined file and folder list after filtering. Results sort by kind (folders first), then by display name without case sensitivity, then by ID in ascending order. A page past the last result returns an empty items array. Files in Trash are excluded from listing and search. With type=folders, only folders count toward total or pagination. A recipient can list a folder with an active share on it or an ancestor. Recipient breadcrumbs are limited to folders that account may view.
+         * @description Use root for the signed-in user's root. Pagination applies to the combined file and folder list after filtering. Results sort by kind (folders first), then by display name without case sensitivity, then by ID in ascending order. A page past the last result returns an empty items array. Files in Trash are excluded from listing and search. With type=folders, only folders count toward total or pagination. A recipient can list a folder with an active share on it or an ancestor. The highest active grant determines viewer or editor access. Recipient breadcrumbs are limited to folders that account may view.
          */
         get: operations["listFolderContents"];
         put?: never;
@@ -189,7 +376,7 @@ export interface paths {
         put?: never;
         /**
          * Upload a file
-         * @description The uploaded file is private by default.
+         * @description Uploads into the account's root or an active folder it owns or can edit. A file uploaded by an editor belongs to the folder owner and uses that owner's quota. Upload completion checks current access again.
          */
         post: operations["uploadFile"];
         delete?: never;
@@ -207,7 +394,7 @@ export interface paths {
         };
         /**
          * Read file information
-         * @description The owner or a recipient with an unexpired direct or inherited grant can read a ready, active file. The response identifies whether the current account is the owner or a viewer.
+         * @description The owner or a recipient with an unexpired direct or inherited grant can read a ready, active file. The response identifies owner access or the highest active viewer or editor grant.
          */
         get: operations["getFile"];
         put?: never;
@@ -217,7 +404,7 @@ export interface paths {
         head?: never;
         /**
          * Edit file metadata or move it to a folder
-         * @description At least one field is required. Omitted fields keep their current values. Set description to null or tags to an empty array to clear them. An owner can change folderId to an owned folder or null for their root. Moving keeps file ID, object, quota and direct grants. Inherited access follows the new location. Files in Trash return 404.
+         * @description At least one field is required. Omitted fields keep their current values. Set description to null or tags to an empty array to clear them. An editor can change originalName, description and tags. An owner can change folderId to an owned folder or null for their root. Moving keeps file ID, object, quota and direct grants. Inherited access follows the new location. Files in Trash return 404.
          */
         patch: operations["updateFile"];
         trace?: never;
@@ -550,6 +737,197 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/boards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List boards owned by the account */
+        get: operations["listBoards"];
+        put?: never;
+        /** Create a private board draft */
+        post: operations["createBoard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/boards/{boardId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read an owned board and its items */
+        get: operations["getBoard"];
+        put?: never;
+        post?: never;
+        /** Remove an owned board */
+        delete: operations["deleteBoard"];
+        options?: never;
+        head?: never;
+        /** Edit and publish an owned board */
+        patch: operations["updateBoard"];
+        trace?: never;
+    };
+    "/boards/{boardId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attach an active owned file as an unpublished item */
+        post: operations["addBoardItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/boards/{boardId}/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an item from an owned board */
+        delete: operations["deleteBoardItem"];
+        options?: never;
+        head?: never;
+        /** Change item publication and original download settings */
+        patch: operations["updateBoardItem"];
+        trace?: never;
+    };
+    "/boards/{boardId}/items/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Write the complete ordered set of board item IDs */
+        put: operations["reorderBoardItems"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/boards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List discoverable boards */
+        get: operations["listPublicBoards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/boards/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a published board and its visible items */
+        get: operations["getPublicBoard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/boards/{publicId}/items/{itemId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a safe text excerpt from a published item */
+        get: operations["getPublicBoardPreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/boards/{publicId}/items/{itemId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download the original when the owner enabled download */
+        get: operations["downloadPublicBoardItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/boards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List public boards for moderation */
+        get: operations["listModerationBoards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/boards/{boardId}/hide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Persistently hide a public board through moderation */
+        post: operations["hidePublicBoard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -578,10 +956,143 @@ export interface components {
             /** Format: email */
             email: string;
             name: string;
+            role: components["schemas"]["AccountRole"];
         };
         UserResponse: {
             success: components["schemas"]["Success"];
             data: components["schemas"]["User"];
+        };
+        /** @enum {string} */
+        AccountRole: "user" | "admin";
+        AccountName: string;
+        /** Format: password */
+        AccountPassword: string;
+        AccountLinkToken: string;
+        /** Format: int64 */
+        StorageBytes: number;
+        AcceptInviteRequest: {
+            token: components["schemas"]["AccountLinkToken"];
+            password: components["schemas"]["AccountPassword"];
+            name: components["schemas"]["AccountName"];
+        };
+        ResetPasswordRequest: {
+            token: components["schemas"]["AccountLinkToken"];
+            password: components["schemas"]["AccountPassword"];
+        };
+        ChangePasswordRequest: {
+            /** Format: password */
+            currentPassword: string;
+            password: components["schemas"]["AccountPassword"];
+        };
+        UpdateAccountRequest: {
+            name: components["schemas"]["AccountName"];
+        };
+        AccountStorage: {
+            usedBytes: components["schemas"]["StorageBytes"];
+            trashedBytes: components["schemas"]["StorageBytes"];
+            quotaBytes: components["schemas"]["StorageBytes"];
+        };
+        AccountProfileResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                user: components["schemas"]["User"];
+                storage: components["schemas"]["AccountStorage"];
+            };
+        };
+        PasswordChangedResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                /** @enum {boolean} */
+                passwordChanged: true;
+            };
+        };
+        CreateInviteRequest: {
+            /** Format: email */
+            email: string;
+        };
+        AccountInvite: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            /** @enum {string} */
+            status: "active" | "expired" | "used" | "revoked";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        AccountInviteListResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                items: components["schemas"]["AccountInvite"][];
+            };
+            pagination: components["schemas"]["Pagination"];
+        };
+        AccountInviteIssuedResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                invite: components["schemas"]["AccountInvite"];
+                token: components["schemas"]["AccountLinkToken"];
+            };
+        };
+        RevokedResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                /** @enum {boolean} */
+                revoked: true;
+            };
+        };
+        AdminUser: components["schemas"]["User"] & {
+            disabled: boolean;
+            quotaBytes: components["schemas"]["StorageBytes"];
+            usedBytes: components["schemas"]["StorageBytes"];
+        };
+        UpdateAdminUserRequest: {
+            role?: components["schemas"]["AccountRole"];
+            disabled?: boolean;
+            quotaBytes?: components["schemas"]["StorageBytes"];
+        };
+        AdminUserResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["AdminUser"];
+        };
+        AdminUserListResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                items: components["schemas"]["AdminUser"][];
+            };
+            pagination: components["schemas"]["Pagination"];
+        };
+        PasswordResetIssuedResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                token: components["schemas"]["AccountLinkToken"];
+                /** Format: date-time */
+                expiresAt: string;
+            };
+        };
+        AdminAuditEntry: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            actorId: string;
+            /** Format: email */
+            actorEmail: string;
+            action: string;
+            /** Format: uuid */
+            targetId: string | null;
+            /** Format: email */
+            targetEmail: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminAuditListResponse: {
+            success: components["schemas"]["Success"];
+            data: {
+                items: components["schemas"]["AdminAuditEntry"][];
+            };
+            pagination: components["schemas"]["Pagination"];
         };
         /** @description A folder UUID or the literal root. */
         FolderReference: string;
@@ -685,7 +1196,7 @@ export interface components {
                  * @description Current account access for this folder view.
                  * @enum {string}
                  */
-                access: "owner" | "viewer";
+                access: "owner" | "editor" | "viewer";
                 /** @description Current folder details or null for root. */
                 folder: components["schemas"]["FolderSummary"] | (never | null);
                 /** @description Visible ancestors in root-to-leaf order, followed by the current folder. The user's root is implicit and returns an empty array. */
@@ -830,18 +1341,25 @@ export interface components {
         GrantFileShareRequest: {
             /** Format: email */
             email: string;
+            access?: components["schemas"]["ShareAccess"];
             /**
              * Format: date-time
              * @description Future expiration with a time zone. An omitted or null value applies the default policy.
              */
             expiresAt?: string | null;
         };
+        /**
+         * @description On grant updates, omitting access preserves a prior level. New grants default to viewer.
+         * @enum {string}
+         */
+        ShareAccess: "viewer" | "editor";
         ShareGrant: {
             /** Format: uuid */
             recipientId: string;
             /** Format: email */
             recipientEmail: string;
             recipientName: string;
+            access: components["schemas"]["ShareAccess"];
             /** Format: date-time */
             grantedAt: string;
             /** Format: date-time */
@@ -914,6 +1432,177 @@ export interface components {
                 revoked: true;
             };
         };
+        BoardSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            publicId: string;
+            title: string;
+            description: string | null;
+            /** @enum {string} */
+            visibility: "draft" | "link" | "discoverable";
+            /** Format: date-time */
+            hiddenAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PublicBoard: {
+            /** Format: uuid */
+            publicId: string;
+            title: string;
+            description: string | null;
+        };
+        PublicBoardItem: {
+            /** Format: uuid */
+            id: string;
+            originalName: string;
+            mimeType: string;
+            /** Format: int64 */
+            size: number;
+            allowDownload: boolean;
+            canPreview: boolean;
+        };
+        OwnedBoardItem: {
+            /** Format: uuid */
+            id: string;
+            originalName: string;
+            mimeType: string;
+            /** Format: int64 */
+            size: number;
+            allowDownload: boolean;
+            canPreview: boolean;
+            /** Format: uuid */
+            fileId: string;
+            position: number;
+            published: boolean;
+            available: boolean;
+        };
+        BoardDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            publicId: string;
+            title: string;
+            description: string | null;
+            /** @enum {string} */
+            visibility: "draft" | "link" | "discoverable";
+            /** Format: date-time */
+            hiddenAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            items: components["schemas"]["OwnedBoardItem"][];
+        };
+        PublicBoardDetail: {
+            /** Format: uuid */
+            publicId: string;
+            title: string;
+            description: string | null;
+            items: components["schemas"]["PublicBoardItem"][];
+        };
+        ModerationBoard: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            publicId: string;
+            title: string;
+            /** @enum {string} */
+            visibility: "draft" | "link" | "discoverable";
+            /** Format: date-time */
+            hiddenAt: string | null;
+        };
+        BoardCreateRequest: {
+            title: string;
+            description?: string | null;
+        };
+        BoardUpdateRequest: {
+            title?: string;
+            description?: string | null;
+            /** @enum {string} */
+            visibility?: "draft" | "link" | "discoverable";
+        };
+        BoardAttachRequest: {
+            /** Format: uuid */
+            fileId: string;
+        };
+        BoardItemUpdateRequest: {
+            published?: boolean;
+            allowDownload?: boolean;
+        };
+        BoardReorderRequest: {
+            itemIds: string[];
+        };
+        BoardDeleted: {
+            /** @enum {boolean} */
+            deleted: true;
+        };
+        BoardPreview: {
+            text: string;
+            truncated: boolean;
+        };
+        HiddenBoard: {
+            /** Format: date-time */
+            hiddenAt: string;
+        };
+        BoardsResponseData: {
+            items: components["schemas"]["BoardSummary"][];
+        };
+        BoardsResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["BoardsResponseData"];
+            pagination: components["schemas"]["Pagination"];
+        };
+        PublicBoardsResponseData: {
+            items: components["schemas"]["PublicBoard"][];
+        };
+        PublicBoardsResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["PublicBoardsResponseData"];
+            pagination: components["schemas"]["Pagination"];
+        };
+        ModerationBoardsResponseData: {
+            items: components["schemas"]["ModerationBoard"][];
+        };
+        ModerationBoardsResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["ModerationBoardsResponseData"];
+            pagination: components["schemas"]["Pagination"];
+        };
+        BoardSummaryResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["BoardSummary"];
+        };
+        BoardDetailResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["BoardDetail"];
+        };
+        BoardItemResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["OwnedBoardItem"];
+        };
+        BoardDeletedResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["BoardDeleted"];
+        };
+        BoardReorderResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["BoardReorderRequest"];
+        };
+        PublicBoardDetailResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["PublicBoardDetail"];
+        };
+        BoardPreviewResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["BoardPreview"];
+        };
+        HiddenBoardResponse: {
+            success: components["schemas"]["Success"];
+            data: components["schemas"]["HiddenBoard"];
+        };
         FileResponse: {
             success: components["schemas"]["Success"];
             data: components["schemas"]["FileSummary"];
@@ -922,11 +1611,61 @@ export interface components {
             success: components["schemas"]["Success"];
             data: components["schemas"]["FileSummary"] & {
                 /** @enum {string} */
-                access: "owner" | "viewer";
+                access: "owner" | "editor" | "viewer";
             };
         };
     };
     responses: {
+        /** @description The current profile and storage use. */
+        AccountProfile: {
+            headers: {
+                "Cache-Control": components["headers"]["PrivateCache"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["AccountProfileResponse"];
+            };
+        };
+        /** @description The password changed and the account's sessions were invalidated. */
+        PasswordChanged: {
+            headers: {
+                "Cache-Control": components["headers"]["PrivateCache"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["PasswordChangedResponse"];
+            };
+        };
+        /** @description The link was already used or revoked (ACCOUNT_LINK_USED, ACCOUNT_LINK_REVOKED), the email is already registered (ACCOUNT_EMAIL_CONFLICT), the quota is below storage already used (QUOTA_BELOW_USAGE), or this is the last active administrator (LAST_ACTIVE_ADMIN). */
+        AccountConflict: {
+            headers: {
+                "Cache-Control": components["headers"]["PrivateCache"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description The link does not exist or is for a different operation (ACCOUNT_LINK_NOT_FOUND). */
+        AccountLinkNotFound: {
+            headers: {
+                "Cache-Control": components["headers"]["PrivateCache"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description The link has expired (ACCOUNT_LINK_EXPIRED). */
+        AccountLinkExpired: {
+            headers: {
+                "Cache-Control": components["headers"]["PrivateCache"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
         /** @description FOLDER_NAME_CONFLICT indicates an exact duplicate name in the destination. INVALID_FOLDER_MOVE indicates a move into the source folder or a descendant. */
         FolderMutationConflict: {
             headers: {
@@ -1171,6 +1910,7 @@ export interface components {
         };
     };
     parameters: {
+        AdminUserId: string;
         FolderId: components["schemas"]["FolderReference"];
         FolderUuid: string;
         FileId: string;
@@ -1290,6 +2030,333 @@ export interface operations {
                     };
                 };
             };
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    acceptAccountInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description The new account. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["AccountLinkNotFound"];
+            409: components["responses"]["AccountConflict"];
+            410: components["responses"]["AccountLinkExpired"];
+            429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    resetAccountPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["PasswordChanged"];
+            400: components["responses"]["InvalidRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["AccountLinkNotFound"];
+            409: components["responses"]["AccountConflict"];
+            410: components["responses"]["AccountLinkExpired"];
+            429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["AccountProfile"];
+            401: components["responses"]["SessionRequired"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAccountRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["AccountProfile"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    changeAccountPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description The password changed. The browser session cookie is cleared. */
+            200: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordChangedResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            /** @description The request origin is disallowed or the current password is incorrect (`CURRENT_PASSWORD_INVALID`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listAccountInvites: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+                status?: "all" | "active" | "expired" | "used" | "revoked";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of invitation statuses without tokens. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountInviteListResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    createAccountInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description The invite and its one-time token. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountInviteIssuedResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["AccountConflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    revokeAccountInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                inviteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The invite is no longer valid. Repeated revocation returns the same result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokedResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["AccountLinkNotFound"];
+            409: components["responses"]["AccountConflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listAdminUsers: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+                /** @description Case-insensitive literal substring of name or email. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of user accounts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserListResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateAdminUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: components["parameters"]["AdminUserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdminUserRequest"];
+            };
+        };
+        responses: {
+            /** @description The current account after the update. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["AccountConflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    issueAdminPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: components["parameters"]["AdminUserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The one-time token and its expiry. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordResetIssuedResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listAdminAudit: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of successful administrative changes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditListResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
             403: components["responses"]["Forbidden"];
             500: components["responses"]["InternalError"];
         };
@@ -2096,6 +3163,455 @@ export interface operations {
             };
             400: components["responses"]["InvalidRequest"];
             401: components["responses"]["SessionRequired"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listBoards: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardsResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    createBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Board operation result. */
+            201: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardSummaryResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardDetailResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    deleteBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardDeletedResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardSummaryResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    addBoardItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardAttachRequest"];
+            };
+        };
+        responses: {
+            /** @description Board operation result. */
+            201: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardItemResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The file is already attached, or the board has reached its item limit. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    deleteBoardItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardDeletedResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    updateBoardItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardItemUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardItemResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    reorderBoardItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoardReorderRequest"];
+            };
+        };
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardReorderResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    listPublicBoards: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBoardsResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getPublicBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBoardDetailResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getPublicBoardPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BoardPreviewResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            404: components["responses"]["NotFound"];
+            415: components["responses"]["UnsupportedMediaType"];
+            429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
+            503: components["responses"]["StorageUnavailable"];
+        };
+    };
+    downloadPublicBoardItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
+            503: components["responses"]["StorageUnavailable"];
+        };
+    };
+    listModerationBoards: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModerationBoardsResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    hidePublicBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                boardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Board operation result. */
+            200: {
+                headers: {
+                    "Cache-Control": components["headers"]["PrivateCache"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HiddenBoardResponse"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["SessionRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
         };
     };

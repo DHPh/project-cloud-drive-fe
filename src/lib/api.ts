@@ -12,6 +12,21 @@ type LoginRequest = operations['login']['requestBody']['content']['application/j
 type UpdateFileRequest = operations['updateFile']['requestBody']['content']['application/json'];
 type LoginResponse = operations['login']['responses'][200]['content']['application/json'];
 type SessionResponse = operations['getCurrentUser']['responses'][200]['content']['application/json'];
+type AccountResponse = operations['getAccount']['responses'][200]['content']['application/json'];
+type UpdatedAccountResponse = operations['updateAccount']['responses'][200]['content']['application/json'];
+type AcceptInviteResponse = operations['acceptAccountInvite']['responses'][201]['content']['application/json'];
+type ResetPasswordResponse = operations['resetAccountPassword']['responses'][200]['content']['application/json'];
+type ChangePasswordResponse = operations['changeAccountPassword']['responses'][200]['content']['application/json'];
+type AdminUsersResponse = operations['listAdminUsers']['responses'][200]['content']['application/json'];
+type AdminInvitesResponse = operations['listAccountInvites']['responses'][200]['content']['application/json'];
+type AdminAuditResponse = operations['listAdminAudit']['responses'][200]['content']['application/json'];
+type AdminUpdatedUserResponse = operations['updateAdminUser']['responses'][200]['content']['application/json'];
+type AdminInviteCreatedResponse = operations['createAccountInvite']['responses'][201]['content']['application/json'];
+type AdminInviteRevokedResponse = operations['revokeAccountInvite']['responses'][200]['content']['application/json'];
+type AdminResetIssuedResponse = operations['issueAdminPasswordReset']['responses'][201]['content']['application/json'];
+export type AdminUser = components['schemas']['AdminUser'];
+export type AccountInvite = components['schemas']['AccountInvite'];
+export type AdminUserUpdate = components['schemas']['UpdateAdminUserRequest'];
 type LogoutResponse = operations['logout']['responses'][200]['content']['application/json'];
 type FolderResponse = operations['listFolderContents']['responses'][200]['content']['application/json'];
 type FolderContentsType = NonNullable<operations['listFolderContents']['parameters']['query']>['type'];
@@ -28,8 +43,6 @@ type FolderTrashResponse = operations['trashFolder']['responses'][200]['content'
 type FolderRestoreResponse = operations['restoreFolder']['responses'][200]['content']['application/json'];
 type PurgeResponse = operations['purgeTrashItem']['responses'][202]['content']['application/json'];
 type EmptyTrashResponse = operations['emptyTrash']['responses'][202]['content']['application/json'];
-type TrashEventRequest = operations['purgeTrashItem']['requestBody']['content']['application/json'];
-type EmptyTrashRequest = operations['emptyTrash']['requestBody']['content']['application/json'];
 type FileDetailResponse = operations['getFile']['responses'][200]['content']['application/json'];
 type FileSharesResponse = operations['listFileShares']['responses'][200]['content']['application/json'];
 type FolderSharesResponse = operations['listFolderShares']['responses'][200]['content']['application/json'];
@@ -74,7 +87,7 @@ async function json<Response>(path: string, options?: RequestInit): Promise<Resp
   return (await request(path, options)).json();
 }
 
-function jsonOptions(method: 'POST' | 'PATCH', body: LoginRequest | UpdateFileRequest | CreateFolderRequest | UpdateFolderRequest | TrashEventRequest | EmptyTrashRequest, signal?: AbortSignal): RequestInit {
+function jsonOptions(method: 'POST' | 'PATCH', body: object, signal?: AbortSignal): RequestInit {
   return { method, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' }, signal };
 }
 
@@ -84,6 +97,54 @@ export async function login(credentials: LoginRequest) {
 
 export async function currentUser(signal?: AbortSignal) {
   return (await json<SessionResponse>('/auth/me', { signal })).data;
+}
+
+export async function getAccount(signal: AbortSignal) {
+  return (await json<AccountResponse>('/account', { signal })).data;
+}
+
+export async function updateAccount(data: components['schemas']['UpdateAccountRequest'], signal: AbortSignal) {
+  return (await json<UpdatedAccountResponse>('/account', jsonOptions('PATCH', data, signal))).data;
+}
+
+export async function changeAccountPassword(data: components['schemas']['ChangePasswordRequest'], signal: AbortSignal) {
+  return (await json<ChangePasswordResponse>('/account/password', jsonOptions('POST', data, signal))).data;
+}
+
+export async function acceptAccountInvite(data: components['schemas']['AcceptInviteRequest'], signal: AbortSignal) {
+  return (await json<AcceptInviteResponse>('/auth/accept-invite', jsonOptions('POST', data, signal))).data;
+}
+
+export async function resetAccountPassword(data: components['schemas']['ResetPasswordRequest'], signal: AbortSignal) {
+  return (await json<ResetPasswordResponse>('/auth/reset-password', jsonOptions('POST', data, signal))).data;
+}
+
+export function listAdminUsers(page: number, q: string, signal: AbortSignal) {
+  return json<AdminUsersResponse>(`/admin/users?${new URLSearchParams({ page: String(page), q })}`, { signal });
+}
+
+export function listAdminInvites(page: number, status: AccountInvite['status'] | 'all', signal: AbortSignal) {
+  return json<AdminInvitesResponse>(`/admin/invites?${new URLSearchParams({ page: String(page), status })}`, { signal });
+}
+
+export function listAdminAudit(page: number, signal: AbortSignal) {
+  return json<AdminAuditResponse>(`/admin/audit?page=${page}`, { signal });
+}
+
+export async function updateAdminUser(id: string, data: AdminUserUpdate, signal: AbortSignal) {
+  return (await json<AdminUpdatedUserResponse>(`/admin/users/${encodeURIComponent(id)}`, jsonOptions('PATCH', data, signal))).data;
+}
+
+export async function createAccountInvite(data: components['schemas']['CreateInviteRequest'], signal: AbortSignal) {
+  return (await json<AdminInviteCreatedResponse>('/admin/invites', jsonOptions('POST', data, signal))).data;
+}
+
+export async function revokeAccountInvite(id: string, signal: AbortSignal) {
+  return (await json<AdminInviteRevokedResponse>(`/admin/invites/${encodeURIComponent(id)}`, { method: 'DELETE', signal })).data;
+}
+
+export async function issueAdminPasswordReset(id: string, signal: AbortSignal) {
+  return (await json<AdminResetIssuedResponse>(`/admin/users/${encodeURIComponent(id)}/reset-password`, { method: 'POST', signal })).data;
 }
 
 export async function logout() {

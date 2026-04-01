@@ -43,6 +43,7 @@ type NameProps<T> = {
   cancelTestId?: string;
   errorTestId?: string;
   descriptionField?: { label: string; initialValue: string };
+  descriptionOnly?: boolean;
   suspended: boolean;
   trigger: HTMLElement | null;
   onDismiss: () => void;
@@ -53,7 +54,7 @@ type NameProps<T> = {
 
 export function ItemNameDialog<T>({
   initialName, label, requiredMessage, discardMessage, title, description, submitLabel,
-  dialogTestId, inputId, inputTestId, submitTestId, cancelTestId, errorTestId, descriptionField,
+  dialogTestId, inputId, inputTestId, submitTestId, cancelTestId, errorTestId, descriptionField, descriptionOnly = false,
   suspended, trigger, onDismiss, onSessionExpired, save, onSaved,
 }: NameProps<T>) {
   const { text } = useLocale();
@@ -65,6 +66,7 @@ export function ItemNameDialog<T>({
   const [confirmLeave, setConfirmLeave] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const descriptionInput = useRef<HTMLTextAreaElement>(null);
+  const initialFocus = descriptionOnly ? descriptionInput : input;
   const request = useRef<AbortController | null>(null);
   const descriptionChanged = descriptionText !== initialDescription;
   const changed = name.trim() !== initialName || descriptionChanged;
@@ -77,7 +79,7 @@ export function ItemNameDialog<T>({
     if (request.current) return;
     if (confirmLeave) {
       setConfirmLeave(false);
-      input.current?.focus();
+      initialFocus.current?.focus();
     } else if (dirty) setConfirmLeave(true);
     else onDismiss();
   }
@@ -117,15 +119,17 @@ export function ItemNameDialog<T>({
   }
 
   return (
-    <Overlay open={!suspended} testId={dialogTestId} title={title} description={description} onDismiss={dismiss} initialFocus={input} restoreFocus={trigger} restoreFallback={() => document.getElementById('drive-main')?.focus()}>
+    <Overlay open={!suspended} testId={dialogTestId} title={title} description={description} onDismiss={dismiss} initialFocus={initialFocus} restoreFocus={trigger} restoreFallback={() => document.getElementById('drive-main')?.focus()}>
       <form onSubmit={submit} className="min-h-0 overflow-y-auto overscroll-contain">
         <div className="space-y-2 p-5 sm:p-6">
-          <label htmlFor={inputId} className="block text-sm font-medium">{label}</label>
-          <input
-            ref={input} id={inputId} data-testid={inputTestId} className="field" value={name} maxLength={255} readOnly={pending}
-            onChange={(event) => { setName(event.currentTarget.value); setError(null); }} required
-            aria-invalid={Boolean(error)} aria-describedby={error ? errorId : undefined}
-          />
+          {!descriptionOnly && <>
+            <label htmlFor={inputId} className="block text-sm font-medium">{label}</label>
+            <input
+              ref={input} id={inputId} data-testid={inputTestId} className="field" value={name} maxLength={255} readOnly={pending}
+              onChange={(event) => { setName(event.currentTarget.value); setError(null); }} required
+              aria-invalid={Boolean(error) && error !== text.descriptionTooLong} aria-describedby={error && error !== text.descriptionTooLong ? errorId : undefined}
+            />
+          </>}
           {descriptionField && (
             <div className="space-y-2 pt-2">
               <label htmlFor={`${inputId}-description`} className="block text-sm font-medium">{descriptionField.label}</label>
@@ -140,7 +144,7 @@ export function ItemNameDialog<T>({
         <div className="flex flex-wrap justify-end gap-2 border-t border-gray-200 px-5 py-4 sm:px-6">
           {confirmLeave ? (
             <>
-              <button type="button" className="button button-secondary" onClick={() => { setConfirmLeave(false); input.current?.focus(); }}>{text.keepEditing}</button>
+              <button type="button" className="button button-secondary" onClick={() => { setConfirmLeave(false); initialFocus.current?.focus(); }}>{text.keepEditing}</button>
               <button type="button" className="button button-danger" onClick={onDismiss}>{text.discard}</button>
             </>
           ) : (

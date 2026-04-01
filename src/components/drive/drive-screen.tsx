@@ -25,7 +25,7 @@ type ActiveDialog =
   | { kind: 'rename'; file: FileItem; trigger: HTMLElement }
   | { kind: 'trash'; item: FolderItem; trigger: HTMLElement }
   | { kind: 'share'; item: FolderItem; itemLink: string; trigger: HTMLElement }
-  | { kind: 'rename-folder'; folder: FolderSummary; trigger: HTMLElement }
+  | { kind: 'rename-folder'; folder: FolderSummary; trigger: HTMLElement; descriptionOnly?: boolean }
   | { kind: 'move'; item: FolderItem; trigger: HTMLElement };
 
 export function DriveScreen({ initialUser }: { initialUser: User }) {
@@ -88,6 +88,9 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
   const data = query.error || checkingAccess || expired ? undefined : query.data;
   const canManage = data?.data.access === 'owner';
   const readOnly = data?.data.access === 'viewer';
+  const folderEditor = data?.data.access === 'editor';
+  const sharedView = readOnly || folderEditor;
+  const canUpload = canManage || folderEditor;
   const folders = data?.data.items.filter((item) => item.kind === 'folder') ?? [];
   const files = data?.data.items.filter((item) => item.kind === 'file') ?? [];
   const homeHref = driveHref('root', '', 1, view);
@@ -112,9 +115,9 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
     setDialog({ kind: 'share', item, itemLink: new URL(href, window.location.origin).href, trigger });
   }
 
-  function openFolderRename(item: FolderSummary, trigger: HTMLElement) {
+  function openFolderRename(item: FolderSummary, trigger: HTMLElement, descriptionOnly = false) {
     setNotice(null);
-    setDialog({ kind: 'rename-folder', folder: item, trigger });
+    setDialog({ kind: 'rename-folder', folder: item, trigger, descriptionOnly });
   }
 
   function openMove(item: FolderItem, trigger: HTMLElement) {
@@ -171,23 +174,23 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
       signingOut={signingOut} signOutError={signOutError} onSignOut={() => void signOut()}
       drive={{
         folder, search, onSearch: changeSearch,
-        onUpload: canManage ? (trigger) => { setNotice(null); setDialog({ kind: 'upload', trigger }); } : undefined,
+        onUpload: canUpload ? (trigger) => { setNotice(null); setDialog({ kind: 'upload', trigger }); } : undefined,
         onCreateFolder: canManage ? (trigger) => { setNotice(null); setDialog({ kind: 'create-folder', trigger }); } : undefined,
       }}
     >
       <div className="mx-auto max-w-screen-2xl space-y-5 p-4 sm:p-6 lg:p-8">
-        <h1 className="sr-only">{readOnly ? data?.data.folder?.name : text.myDrive}</h1>
+        <h1 className="sr-only">{sharedView ? data?.data.folder?.name : text.myDrive}</h1>
         <div className="flex min-w-0 items-start justify-between gap-2">
           <nav className="min-w-0" aria-label={text.breadcrumb}>
             <ol className="flex flex-wrap items-center gap-1 text-sm font-medium text-gray-800 sm:text-base">
-              {!readOnly && (folder === 'root' || canManage) && <li>
+              {!sharedView && (folder === 'root' || canManage) && <li>
                 <Link href={homeHref} prefetch={false} aria-current={folder === 'root' ? 'page' : undefined} className="flex min-h-10 items-center gap-1.5 rounded-md px-1 py-1 text-base font-semibold hover:text-primary-800 sm:text-lg">
                   <HomeIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-gray-500" />{text.myDrive}
                 </Link>
               </li>}
               {data?.data.breadcrumbs.map((crumb, index) => (
                 <li key={crumb.id} className="flex min-w-0 items-center gap-1">
-                  {(!readOnly || index > 0) && <ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-500" />}
+                  {(!sharedView || index > 0) && <ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-500" />}
                   {crumb.id === folder
                     ? <span aria-current="page" title={crumb.name} className="max-w-[11rem] truncate sm:max-w-sm">{crumb.name}</span>
                     : <Link href={driveHref(crumb.id, '', 1, view)} prefetch={false} className="max-w-[11rem] truncate rounded-md px-1 py-1.5 hover:text-primary-800 sm:max-w-sm" title={crumb.name}>{crumb.name}</Link>}
@@ -205,9 +208,12 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
             href={driveSearchHref({ q: search, includeMetadata: false, type: 'all', sort: 'name', page: 1 })}
             className="button button-secondary min-h-11">{text.globalDriveSearch}</Link>}
           {data?.data.folder && <FolderArchiveDownload folder={data.data.folder} onExpired={onExpired} />}
+          {folderEditor && data?.data.folder && <button type="button" data-testid="folder-description-edit" className="button button-secondary min-h-11"
+            onClick={(event) => { if (data.data.folder) openFolderRename(data.data.folder, event.currentTarget, true); }}>{text.editFolderDescription}</button>}
         </div>}
         {data?.data.folder?.description && <p data-testid="drive-folder-description" className="max-w-3xl whitespace-pre-wrap text-sm text-gray-700 [overflow-wrap:anywhere]">{data.data.folder.description}</p>}
         {readOnly && <p data-testid="drive-read-only" className="w-fit rounded-full bg-primary-50 px-3 py-1 text-sm font-medium text-primary-900">{text.readOnly}</p>}
+        {folderEditor && <div className="space-y-1"><p data-testid="drive-editor" className="w-fit rounded-full bg-primary-50 px-3 py-1 text-sm font-medium text-primary-900">{text.editingAccess}</p><p className="text-sm text-gray-700">{text.sharedUploadQuota}</p></div>}
         <div className={notice ? 'flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900' : 'sr-only'}>
           <p role="status" data-testid="drive-status">{notice?.message || (query.isFetching ? text.updating : '')}</p>
           {notice?.href && <Link href={notice.href} prefetch={false} data-testid="folder-move-destination" className="rounded-sm font-medium underline">{text.openMoveDestination}</Link>}
@@ -244,7 +250,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
                 {search ? <p className="text-sm text-gray-600">{text.noResultsDescription}</p> : page === 1 && <p className="text-sm text-gray-600">{readOnly ? text.readOnlyFolderEmpty : text.noFolderItemsDescription}</p>}
                 {page > 1 ? (
                   <Link href={driveHref(folder, search, 1, view)} prefetch={false} className="button button-secondary">{text.firstPage}</Link>
-                ) : !search && canManage && (
+                ) : !search && canUpload && (
                   <button type="button" data-testid="upload-empty-open" className="button button-primary" onClick={(event) => setDialog({ kind: 'upload', trigger: event.currentTarget })}><ArrowUpTrayIcon className="h-5 w-5" />{text.upload}</button>
                 )}
               </div>
@@ -264,7 +270,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
         )}
       </div>
       {dialog?.kind === 'upload' && (
-        <UploadDialog folder={folder} suspended={expired} trigger={dialog.trigger} onDismiss={() => setDialog(null)} onSessionExpired={onExpired} onUploaded={updateList} onRefresh={async () => (await query.refetch()).isSuccess} />
+        <UploadDialog folder={folder} suspended={expired || (!checkingAccess && !canUpload)} sharedOwner={folderEditor} trigger={dialog.trigger} onDismiss={() => setDialog(null)} onSessionExpired={onExpired} onUploaded={updateList} onRefresh={async () => (await query.refetch()).isSuccess} />
       )}
       {dialog?.kind === 'rename' && (
         <RenameDialog file={dialog.file} suspended={expired} trigger={dialog.trigger} onDismiss={() => setDialog(null)} onSessionExpired={onExpired} onSaved={(file) => {
@@ -286,7 +292,8 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
         <ShareDialog item={dialog.item} itemLink={dialog.itemLink} trigger={dialog.trigger} userId={user.id} suspended={expired} onDismiss={() => setDialog(null)} onExpired={onExpired} />
       )}
       {(dialog?.kind === 'create-folder' || dialog?.kind === 'rename-folder') && (
-        <FolderNameDialog folder={dialog.kind === 'rename-folder' ? dialog.folder : undefined} parent={folder} trigger={dialog.trigger} suspended={expired}
+        <FolderNameDialog folder={dialog.kind === 'rename-folder' ? dialog.folder : undefined} parent={folder} trigger={dialog.trigger} suspended={expired || (!checkingAccess && (dialog.kind === 'rename-folder' && dialog.descriptionOnly ? !folderEditor : !canManage))}
+          descriptionOnly={dialog.kind === 'rename-folder' && dialog.descriptionOnly}
           onDismiss={() => setDialog(null)} onExpired={onExpired} onSaved={async (savedFolder) => {
             await refreshFolderLists();
             const message = dialog.kind === 'rename-folder'

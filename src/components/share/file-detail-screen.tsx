@@ -10,6 +10,7 @@ import { localizedError } from '@/lib/messages';
 import { driveHref, fileHref } from '@/lib/routes';
 import { useAccountSession } from '../account-session';
 import { DriveLayout } from '../drive/drive-layout';
+import { RenameDialog } from '../drive/rename-dialog';
 import { useLocale } from '../providers';
 import { FileMetadataDialog } from './file-metadata-dialog';
 import { FilePreview } from './file-preview';
@@ -17,7 +18,7 @@ import { FilePreview } from './file-preview';
 export function FileDetailScreen({ initialUser, fileId }: { initialUser: User; fileId: string }) {
   const { user, expired, expire, signingOut, signOut, signOutError, sessionDialog } = useAccountSession(initialUser, fileHref(fileId));
   const { text, locale } = useLocale();
-  const [editing, setEditing] = useState<{ trigger: HTMLElement; file: FileItem } | null>(null);
+  const [editing, setEditing] = useState<{ kind: 'metadata' | 'rename'; trigger: HTMLElement; file: FileItem } | null>(null);
   const [saved, setSaved] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -34,6 +35,9 @@ export function FileDetailScreen({ initialUser, fileId }: { initialUser: User; f
   const unavailable = error instanceof ApiError && [403, 404].includes(error.status);
   const checkingAccess = query.isPending || (!query.isFetchedAfterMount && query.isFetching);
   const ownerAccess = file?.access === 'owner' && !error && !expired && !checkingAccess;
+  const editorAccess = file?.access === 'editor' && !error && !expired && !checkingAccess;
+  const canEdit = ownerAccess || editorAccess;
+  const suspendedEditor = expired || (!checkingAccess && !canEdit);
 
   useEffect(() => {
     if (error instanceof ApiError && error.status === 401) expire();
@@ -72,6 +76,7 @@ export function FileDetailScreen({ initialUser, fileId }: { initialUser: User; f
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-800"><DocumentIcon aria-hidden="true" className="h-6 w-6" /></span>
                 <h2 id="file-detail-name" className="min-w-0 break-words text-lg font-semibold sm:text-xl">{file.originalName}</h2>
               </div>
+              {editorAccess && <p data-testid="file-editor-access" className="w-fit rounded-full bg-primary-50 px-3 py-1 text-sm font-medium text-primary-900">{text.editingAccess}</p>}
               <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
                 <dt className="font-medium text-gray-600">{text.fileSize}</dt><dd>{readableSize(file.size, locale)}</dd>
                 <dt className="font-medium text-gray-600">{text.fileType}</dt><dd className="break-all">{file.mimeType}</dd>
@@ -83,9 +88,13 @@ export function FileDetailScreen({ initialUser, fileId }: { initialUser: User; f
                 <button type="button" data-testid="file-preview-toggle" aria-expanded={previewOpen} aria-controls="file-preview-panel" className="button button-secondary min-h-11" onClick={() => setPreviewOpen(!previewOpen)}>
                   {previewOpen ? (locale === 'vi' ? 'Đóng xem trước' : 'Close preview') : (locale === 'vi' ? 'Xem trước' : 'Preview')}
                 </button>
-                {ownerAccess && <button data-testid="file-metadata-open" type="button" className="button button-secondary min-h-11" onClick={(event) => {
+                {canEdit && <button data-testid="file-detail-rename" type="button" className="button button-secondary min-h-11" onClick={(event) => {
                   setSaved(false);
-                  setEditing({ trigger: event.currentTarget, file });
+                  setEditing({ kind: 'rename', trigger: event.currentTarget, file });
+                }}>{text.rename}</button>}
+                {canEdit && <button data-testid="file-metadata-open" type="button" className="button button-secondary min-h-11" onClick={(event) => {
+                  setSaved(false);
+                  setEditing({ kind: 'metadata', trigger: event.currentTarget, file });
                 }}><PencilSquareIcon aria-hidden="true" className="h-5 w-5" />{text.editFileMetadata}</button>}
               </div>
               {previewOpen && <section id="file-preview-panel" aria-label={locale === 'vi' ? 'Xem trước tệp' : 'File preview'} className="border-t border-gray-200 pt-4">
@@ -95,7 +104,8 @@ export function FileDetailScreen({ initialUser, fileId }: { initialUser: User; f
           )}
         </div>
       </DriveLayout>
-      {editing && <FileMetadataDialog file={editing.file} trigger={editing.trigger} suspended={expired} onDismiss={() => setEditing(null)} onExpired={expire} onSaved={onMetadataSaved} />}
+      {editing?.kind === 'metadata' && <FileMetadataDialog file={editing.file} trigger={editing.trigger} suspended={suspendedEditor} onDismiss={() => setEditing(null)} onExpired={expire} onSaved={onMetadataSaved} />}
+      {editing?.kind === 'rename' && <RenameDialog file={editing.file} trigger={editing.trigger} suspended={suspendedEditor} onDismiss={() => setEditing(null)} onSessionExpired={expire} onSaved={(updated) => void onMetadataSaved(updated)} />}
       {sessionDialog}
     </>
   );

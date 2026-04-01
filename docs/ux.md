@@ -91,6 +91,16 @@ Danh sách theo quyền cấp trực tiếp, với bộ lọc loại và trạng
 
 Hộp thoại chia sẻ cho chủ chọn **Chỉ xem** hoặc **Chỉnh sửa** khi cấp quyền. Hiển thị mức quyền cùng hạn thực tế trong danh sách đã cấp. Màn hình nhận quyền dùng vai trò do backend trả về để mở đúng thao tác. Người sửa tệp dùng nút sửa tên, mô tả và thẻ trên chi tiết. Trong thư mục được sửa, hiển thị tải lên và sửa mô tả, cùng tài khoản chịu quota. Các thao tác riêng của chủ giữ điều kiện sở hữu.
 
+## Tài khoản và quản trị
+
+Tài khoản hiển thị hồ sơ, số byte đang tính, hạn mức và dung lượng trong Thùng rác. Đổi mật khẩu chấm dứt phiên và dẫn về đăng nhập. Link mời và đặt lại mật khẩu mở biểu mẫu dùng một lần. Dữ liệu token nằm trong fragment khi mở, được giữ trong bộ nhớ của màn hình đến khi hoàn tất và gửi trong POST.
+
+Màn quản trị dùng vai trò từ phiên và API. Các tab liệt kê tài khoản, lời mời và nhật ký có phân trang theo URL. Thao tác cấp, khóa, đổi quota, thay vai trò hoặc thu hồi giữ số liệu do backend trả về. Link mời và reset chỉ xuất hiện ở kết quả cấp tương ứng, với nút sao chép. Thử bàn phím, trạng thái lỗi, quyền và giữ nội dung nhập khi lưu thất bại.
+
+## Board công khai và Khám phá
+
+Chủ quản lý board và từng tệp trong khu vực đã đăng nhập. Màn có trạng thái nháp, công bố qua link hoặc Khám phá. Hiển thị link riêng khi board đang công bố, trạng thái ẩn do kiểm duyệt, và điều khiển riêng cho công bố mục, tải bản gốc, thứ tự và gỡ tệp. Khách mở trang công khai qua link hoặc từ danh mục Khám phá và chỉ thấy mục đang được công bố. Hiển thị đoạn văn bản dẫn xuất khi API báo hỗ trợ, và nút tải gốc theo từng mục. Kiểm tra lỗi mất công bố, bàn phím, focus, phân trang và tên dài trên desktop/mobile.
+
 ## Phạm vi PWA
 
 Baseline ưu tiên trải nghiệm responsive. Khi bổ sung chế độ cài đặt, kiểm tra `100dvh`, safe area, nút quay lại từ deep link, input mobile tối thiểu 16 px, màn hình offline và thông báo cập nhật. Service worker chỉ được lưu tài nguyên công khai đã chọn. Tệp riêng, preview riêng và API xác thực nằm ngoài cache service worker. Chạy kiểm thử WebKit và kiểm tra standalone trên iOS trước khi phát hành PWA.

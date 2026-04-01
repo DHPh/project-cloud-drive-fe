@@ -18,9 +18,10 @@ type Props = {
   onSessionExpired: () => void;
   onUploaded: () => void;
   onRefresh: () => Promise<boolean>;
+  sharedOwner?: boolean;
 };
 
-export function UploadDialog({ folder, suspended, trigger, onDismiss, onSessionExpired, onUploaded, onRefresh }: Props) {
+export function UploadDialog({ folder, suspended, trigger, onDismiss, onSessionExpired, onUploaded, onRefresh, sharedOwner }: Props) {
   const { text } = useLocale();
   const [items, setItems] = useState<UploadItem[]>([]);
   const [pending, setPending] = useState(false);
@@ -113,7 +114,7 @@ export function UploadDialog({ folder, suspended, trigger, onDismiss, onSessionE
   }
 
   return (
-    <Overlay open={!suspended} testId="upload-dialog" title={text.uploadTitle} description={text.uploadDescription} onDismiss={pending ? undefined : dismiss} initialFocus={picker} restoreFocus={trigger}>
+    <Overlay open={!suspended} testId="upload-dialog" title={text.uploadTitle} description={sharedOwner ? text.sharedUploadQuota : text.uploadDescription} onDismiss={pending ? undefined : dismiss} initialFocus={picker} restoreFocus={trigger}>
       <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-5 sm:p-6">
         <div
           onDragOver={(event) => { event.preventDefault(); if (!pending) setDragging(true); }}

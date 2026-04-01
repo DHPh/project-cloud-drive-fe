@@ -30,6 +30,7 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
   const initialRenew = initialAction?.kind === 'renew' ? initialAction.grant : null;
   const [email, setEmail] = useState(initialRenew?.recipientEmail ?? '');
   const [expiry, setExpiry] = useState(initialRenew?.isActive ? expiryToVietnamInput(initialRenew.expiresAt) : '');
+  const [access, setAccess] = useState<ShareGrant['access'] | null>(null);
   const [editing, setEditing] = useState<ShareGrant | null>(initialRenew);
   const [revoke, setRevoke] = useState<ShareGrant | null>(initialAction?.kind === 'revoke' ? initialAction.grant : null);
   const [discard, setDiscard] = useState(false);
@@ -44,7 +45,8 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
   const revokeCancel = useRef<HTMLButtonElement>(null);
   const discardCancel = useRef<HTMLButtonElement>(null);
   const expiryBeforeEdit = editing?.isActive ? expiryToVietnamInput(editing.expiresAt) : '';
-  const dirty = editing ? expiry !== expiryBeforeEdit : Boolean(email.trim() || expiry);
+  const accessChanged = access !== null && access !== editing?.access;
+  const dirty = editing ? expiry !== expiryBeforeEdit || accessChanged : Boolean(email.trim() || expiry || access);
   const dateFormat = shareDateFormat(locale);
   const folder = item.kind === 'folder';
   const itemName = item.kind === 'folder' ? item.name : item.originalName;
@@ -72,6 +74,7 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
     setEditing(null);
     setEmail('');
     setExpiry('');
+    setAccess(null);
     setSaveError(null);
   }
 
@@ -89,6 +92,7 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
     setEditing(grant);
     setEmail(grant.recipientEmail);
     setExpiry(grant.isActive ? expiryToVietnamInput(grant.expiresAt) : '');
+    setAccess(null);
     setSaveError(null);
     setNotice('');
     expiryInput.current?.focus();
@@ -117,7 +121,7 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
     setSaveError(null);
     setNotice('');
     try {
-      const result = await grantItemShare(item, { email: email.trim(), expiresAt: explicitExpiry }, controller.signal);
+      const result = await grantItemShare(item, { email: email.trim(), expiresAt: explicitExpiry, access: accessChanged ? access ?? undefined : undefined }, controller.signal);
       if (controller.signal.aborted) return;
       const message = `${text.shareGranted} ${dateFormat.format(new Date(result.expiresAt))} (${text.vietnamTime}).`;
       if (initialAction) {
@@ -230,6 +234,13 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
             <input ref={emailInput} id="share-email" data-testid="share-email" type="email" autoComplete="off" required maxLength={254} spellCheck={false}
               className="field" value={email} readOnly={Boolean(editing || pending)} onChange={(event) => setEmail(event.target.value)} />
           </div>
+          <label className="block space-y-1 text-sm font-medium">{text.shareAccessLabel}
+            <select data-testid="share-access" className="field" value={access ?? editing?.access ?? ''} disabled={Boolean(pending)}
+              onChange={(event) => setAccess(event.currentTarget.value === 'editor' ? 'editor' : event.currentTarget.value === 'viewer' ? 'viewer' : null)}>
+              {!editing && <option value="">{text.defaultShareAccess}</option>}
+              <option value="viewer">{text.readOnly}</option><option value="editor">{text.editingAccess}</option>
+            </select>
+          </label>
           <div>
             <label htmlFor="share-expiry" className="mb-1 block text-sm font-medium">{text.shareExpiry}</label>
             <input ref={expiryInput} id="share-expiry" data-testid="share-expiry" type="datetime-local" step={60} className="field min-w-0"
@@ -267,6 +278,7 @@ export function ShareDialog({ item, itemLink, userId, trigger, suspended, onDism
                     <span className={`rounded-full px-2 py-1 text-xs ${item.isActive ? 'bg-emerald-50 text-emerald-900' : 'bg-gray-100 text-gray-700'}`}>{item.isActive ? text.shareActive : text.shareExpired}</span>
                   </div>
                   <p className="mt-1 text-sm text-gray-700">{text.expiresAt} <time data-testid="share-effective-expiry" dateTime={item.expiresAt}>{dateFormat.format(new Date(item.expiresAt))}</time> ({text.vietnamTime})</p>
+                  <p data-testid="share-recipient-access" className="mt-1 text-sm text-gray-700">{item.access === 'editor' ? text.editingAccess : text.readOnly}</p>
                   {revoke?.recipientId === item.recipientId ? (
                     <div className="mt-2 space-y-2 rounded-md bg-amber-50 p-2 text-sm text-amber-950">
                       <p>{text.shareRevokePrompt}</p>

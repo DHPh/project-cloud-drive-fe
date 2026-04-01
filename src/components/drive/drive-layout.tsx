@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftOnRectangleIcon, ArrowUpTrayIcon, Bars3Icon, ClockIcon, FolderIcon, FolderPlusIcon, MagnifyingGlassIcon, PlusIcon, ShareIcon, TrashIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftOnRectangleIcon, ArrowUpTrayIcon, Bars3Icon, ClockIcon, FolderIcon, FolderPlusIcon, GlobeAltIcon, MagnifyingGlassIcon, PlusIcon, RectangleStackIcon, ShareIcon, ShieldCheckIcon, TrashIcon, UserCircleIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { User } from '@/lib/api';
@@ -53,7 +53,7 @@ export function DriveSearch({ search, onSearch, label, testId = 'drive-search' }
   );
 }
 
-type Section = 'drive' | 'trash' | 'shared' | 'outgoing' | 'file' | 'search' | 'timeline';
+type Section = 'drive' | 'trash' | 'shared' | 'outgoing' | 'file' | 'search' | 'timeline' | 'account' | 'admin' | 'boards';
 
 type Props = {
   user: User;
@@ -66,14 +66,18 @@ type Props = {
   children: ReactNode;
 };
 
-function NavigationLinks({ active, homeHref, mobile = false, onNavigate }: { active: Section; homeHref: string; mobile?: boolean; onNavigate?: () => void }) {
-  const { text } = useLocale();
+function NavigationLinks({ active, homeHref, admin, mobile = false, onNavigate }: { active: Section; homeHref: string; admin: boolean; mobile?: boolean; onNavigate?: () => void }) {
+  const { text, locale } = useLocale();
   const links = [
     { id: 'drive', href: homeHref, label: text.myDrive, Icon: FolderIcon, testId: undefined },
     { id: 'timeline', href: '/drive/timeline', label: text.timeline, Icon: ClockIcon, testId: mobile ? 'timeline-nav-mobile' : 'timeline-nav' },
     { id: 'shared', href: '/shared-with-me', label: text.sharedWithMe, Icon: UserGroupIcon, testId: mobile ? 'shared-nav-mobile' : 'shared-nav' },
     { id: 'outgoing', href: '/shared-by-me', label: text.sharedByMe, Icon: ShareIcon, testId: mobile ? 'outgoing-nav-mobile' : 'outgoing-nav' },
+    { id: 'boards', href: '/boards', label: locale === 'vi' ? 'Bảng của tôi' : 'My boards', Icon: RectangleStackIcon, testId: undefined },
+    { id: 'explore', href: '/explore', label: locale === 'vi' ? 'Khám phá' : 'Explore', Icon: GlobeAltIcon, testId: undefined },
     { id: 'trash', href: '/trash', label: text.trash, Icon: TrashIcon, testId: mobile ? 'trash-nav-mobile' : 'trash-nav' },
+    { id: 'account', href: '/account', label: text.account, Icon: UserCircleIcon, testId: mobile ? 'account-nav-mobile' : 'account-nav' },
+    ...(admin ? [{ id: 'admin', href: '/admin', label: text.admin, Icon: ShieldCheckIcon, testId: mobile ? 'admin-nav-mobile' : 'admin-nav' }] : []),
   ];
 
   return links.map(({ id, href, label, Icon, testId }) => (
@@ -95,7 +99,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
   const newMenu = useRef<HTMLDetailsElement>(null);
   const newTrigger = useRef<HTMLElement>(null);
   const mainId = `${section}-main`;
-  const showDriveActions = Boolean(drive?.onCreateFolder && drive?.onUpload);
+  const showDriveActions = Boolean(drive?.onCreateFolder || drive?.onUpload);
 
   const initials = (user.name.trim().split(/\s+/).map((part) => part[0]).filter(Boolean).slice(0, 2).join('') || user.email[0] || '?').toUpperCase();
 
@@ -122,7 +126,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
         </button>
       </header>
       <aside className={`min-w-0 bg-white px-4 pt-3 lg:bg-transparent lg:px-3 lg:pt-4 ${showDriveActions ? '' : 'hidden lg:block'}`}>
-        {showDriveActions && (
+        {drive?.onCreateFolder && (
           <details ref={newMenu} className="group relative inline-block min-w-32 lg:mb-5 lg:block" onKeyDown={(event) => {
             if (event.key === 'Escape' && newMenu.current?.open) { newMenu.current.open = false; newTrigger.current?.focus(); }
           }}>
@@ -131,12 +135,13 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
             </summary>
             <div className="panel absolute left-0 z-30 mt-2 min-w-[11rem] p-1.5 lg:right-0">
               <button type="button" data-testid="folder-create-open" className="button min-h-11 w-full justify-start text-gray-700 hover:bg-gray-100" onClick={() => startDriveAction('onCreateFolder')}><FolderPlusIcon aria-hidden="true" className="h-5 w-5" />{text.createFolder}</button>
-              <button type="button" data-testid="upload-open" className="button min-h-11 w-full justify-start text-gray-700 hover:bg-gray-100" onClick={() => startDriveAction('onUpload')}><ArrowUpTrayIcon className="h-5 w-5" />{text.upload}</button>
+              {drive.onUpload && <button type="button" data-testid="upload-open" className="button min-h-11 w-full justify-start text-gray-700 hover:bg-gray-100" onClick={() => startDriveAction('onUpload')}><ArrowUpTrayIcon className="h-5 w-5" />{text.upload}</button>}
             </div>
           </details>
         )}
+        {drive?.onUpload && !drive.onCreateFolder && <button type="button" data-testid="upload-open" className="button button-secondary min-h-11 lg:mb-5" onClick={(event) => drive.onUpload?.(event.currentTarget)}><ArrowUpTrayIcon aria-hidden="true" className="h-5 w-5" />{text.upload}</button>}
         <nav aria-label={text.navigation} className="hidden space-y-1 lg:block">
-          <NavigationLinks active={section} homeHref={homeHref} />
+          <NavigationLinks active={section} homeHref={homeHref} admin={user.role === 'admin'} />
         </nav>
       </aside>
       <Overlay
@@ -144,7 +149,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
         onDismiss={() => setNavigationOpen(false)} restoreFallback={() => toggleNavigation.current?.focus()}
       >
         <nav aria-label={text.navigation} className="space-y-1 p-4">
-          <NavigationLinks active={section} homeHref={homeHref} mobile onNavigate={() => setNavigationOpen(false)} />
+          <NavigationLinks active={section} homeHref={homeHref} admin={user.role === 'admin'} mobile onNavigate={() => setNavigationOpen(false)} />
         </nav>
       </Overlay>
       <main id={mainId} tabIndex={-1} className="safe-bottom min-w-0 bg-white lg:m-0 lg:min-h-[calc(100dvh-4rem)] lg:rounded-tl-2xl lg:border-l lg:border-t lg:border-gray-200">

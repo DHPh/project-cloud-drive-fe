@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 
 const config: NextConfig = {
   poweredByHeader: false,
+  agentRules: false,
   devIndicators: false,
   async rewrites() {
     const configuredOrigin = process.env.CLOUD_DRIVE_API_ORIGIN?.trim();

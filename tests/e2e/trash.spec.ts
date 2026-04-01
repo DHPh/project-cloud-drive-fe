@@ -157,11 +157,12 @@ test.describe('empty Trash for the viewer fixture', () => {
   test('TRASH-01 shows loading and recovers from a transient list error', async ({ page }, testInfo) => {
     let releaseInitialRequest!: () => void
     const waitForRelease = new Promise<void>(resolve => { releaseInitialRequest = resolve })
-    // Only the first query fails at the transport boundary. Retry reads the real API.
-    await page.route(url => url.pathname === `${api}/trash`, async route => {
+    const isTrashRequest = (url: URL) => url.pathname === `${api}/trash`
+    // Cover initial requests that are replaced during hydration. Explicit retry uses the real API.
+    await page.route(isTrashRequest, async route => {
       await waitForRelease
-      await route.abort('failed')
-    }, { times: 1 })
+      await route.fulfill({ status: 503, json: { success: false, error: { code: 'STORAGE_UNAVAILABLE', message: 'Synthetic list failure' } } })
+    })
 
     try {
       await page.goto('/trash', { waitUntil: 'domcontentloaded' })
@@ -170,6 +171,7 @@ test.describe('empty Trash for the viewer fixture', () => {
       releaseInitialRequest()
     }
     await expect(page.getByTestId('trash-error')).toBeVisible()
+    await page.unroute(isTrashRequest)
     const retried = apiResponse(page, 'GET', '/trash')
     await page.getByTestId('trash-retry').press('Enter')
     const response = await retried

@@ -6,6 +6,8 @@ Repo Next.js độc lập cho giao diện Cloud Drive. Mốc `DRIVE-01` giữ b�
 
 `SHARE-02` bổ sung chia sẻ thư mục chỉ xem, quyền kế thừa theo vị trí, di chuyển tệp và khôi phục riêng tư từ Thùng rác.
 
+Bản OpenAPI `0.13.0` có tìm toàn Drive, Dòng thời gian, quản lý quyền đã chia sẻ, xem trước, ZIP, tài khoản, quản trị, quyền chỉnh sửa và Board công khai. Trình duyệt dùng quyền hiện hành do backend xác nhận.
+
 - [Thiết kế UX](docs/ux.md)
 - [Bản OpenAPI của frontend](docs/contracts/openapi.yaml)
 
@@ -36,6 +38,8 @@ npm run test:e2e
 ```
 
 Chạy Playwright khi web và backend dùng fixture tổng hợp đã sẵn sàng. `PLAYWRIGHT_BASE_URL` mặc định là `http://127.0.0.1:3000`. Báo cáo HTML nằm trong `playwright-report/`.
+
+Các ca quản trị dùng admin tổng hợp đã tạo qua CLI bootstrap của backend. Cấp `PLAYWRIGHT_ADMIN_EMAIL` và `PLAYWRIGHT_ADMIN_PASSWORD` cho tiến trình Playwright. Khi nghiệm thu toàn bộ, dùng database, bucket và tiến trình backend thử nghiệm riêng cho mỗi cấu hình trình duyệt. Chạy từng cấu hình bằng `node node_modules/@playwright/test/cli.js test --project=chromium-desktop` rồi lặp với các project còn lại trong cấu hình Playwright.
 
 ## Triển khai trên Vercel
 

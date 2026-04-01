@@ -34,6 +34,7 @@ export function sharedHref(page = 1, tab: SharedTab = 'files') {
 const fileIdPattern = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}';
 const fileIdRegex = new RegExp(`^${fileIdPattern}$`, 'i');
 const fileRouteRegex = new RegExp(`^/files/${fileIdPattern}$`, 'i');
+const boardRouteRegex = new RegExp(`^/boards/${fileIdPattern}$`, 'i');
 
 export function isFileId(value: string) {
   return fileIdRegex.test(value);
@@ -44,7 +45,7 @@ export function fileHref(fileId: string) {
 }
 
 export function safeAppRedirect(value: string | string[] | null | undefined) {
-  if (typeof value !== 'string' || !(/^\/(drive(?:\/(?:search|timeline))?|trash|shared-with-me|shared-by-me)(\?|$)/.test(value) || fileRouteRegex.test(value))) return '/drive';
+  if (typeof value !== 'string' || !(/^\/(drive(?:\/(?:search|timeline))?|trash|shared-with-me|shared-by-me|account|boards|admin(?:\/boards)?)(\?|$)/.test(value) || fileRouteRegex.test(value) || boardRouteRegex.test(value))) return '/drive';
   return value;
 }
 
@@ -68,6 +69,29 @@ type ParamsReader = Pick<URLSearchParams, 'get'>;
 
 export function searchParamsReader(params: SearchParams): ParamsReader {
   return { get: (name) => typeof params[name] === 'string' ? params[name] : null };
+}
+
+export type AdminFilters = { tab: 'users' | 'invites' | 'audit'; q: string; status: 'all' | 'active' | 'expired' | 'used' | 'revoked'; page: number };
+
+export function readAdminFilters(params: ParamsReader): AdminFilters {
+  const tab = params.get('tab');
+  const status = params.get('status');
+  return {
+    tab: tab === 'invites' || tab === 'audit' ? tab : 'users',
+    q: [...(params.get('q') ?? '').trim()].slice(0, 255).join(''),
+    status: status === 'active' || status === 'expired' || status === 'used' || status === 'revoked' ? status : 'all',
+    page: pageNumber(params.get('page')),
+  };
+}
+
+export function adminHref(filters: AdminFilters) {
+  const query = new URLSearchParams();
+  if (filters.tab !== 'users') query.set('tab', filters.tab);
+  if (filters.tab === 'users' && filters.q) query.set('q', filters.q);
+  if (filters.tab === 'invites' && filters.status !== 'all') query.set('status', filters.status);
+  if (filters.page > 1) query.set('page', String(filters.page));
+  const search = query.toString();
+  return search ? `/admin?${search}` : '/admin';
 }
 
 export function readDriveSearch(params: ParamsReader): DriveSearchFilters {
