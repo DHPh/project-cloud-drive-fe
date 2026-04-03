@@ -14,6 +14,7 @@ type Props = {
   folder: string;
   suspended: boolean;
   trigger: HTMLElement | null;
+  initialFiles?: File[];
   onDismiss: () => void;
   onSessionExpired: () => void;
   onUploaded: () => void;
@@ -21,14 +22,16 @@ type Props = {
   sharedOwner?: boolean;
 };
 
-export function UploadDialog({ folder, suspended, trigger, onDismiss, onSessionExpired, onUploaded, onRefresh, sharedOwner }: Props) {
+export function UploadDialog({ folder, suspended, trigger, initialFiles, onDismiss, onSessionExpired, onUploaded, onRefresh, sharedOwner }: Props) {
   const { text } = useLocale();
-  const [items, setItems] = useState<UploadItem[]>([]);
+  const nextId = useRef(initialFiles?.length ?? 0);
+  const [items, setItems] = useState<UploadItem[]>(() =>
+    (initialFiles ?? []).map((file, index) => ({ id: index + 1, file, status: 'queued' })),
+  );
   const [pending, setPending] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [refreshStatus, setRefreshStatus] = useState('');
-  const nextId = useRef(0);
   const input = useRef<HTMLInputElement>(null);
   const batch = useRef<AbortController | null>(null);
   const picker = useRef<HTMLButtonElement>(null);
@@ -52,7 +55,7 @@ export function UploadDialog({ folder, suspended, trigger, onDismiss, onSessionE
     };
   }, []);
 
-  function addFiles(files: FileList) {
+  function addFiles(files: FileList | File[]) {
     const selected = Array.from(files, (file): UploadItem => ({ id: ++nextId.current, file, status: 'queued' }));
     setItems((current) => [...current, ...selected]);
     setConfirmLeave(false);
@@ -115,25 +118,30 @@ export function UploadDialog({ folder, suspended, trigger, onDismiss, onSessionE
 
   return (
     <Overlay open={!suspended} testId="upload-dialog" title={text.uploadTitle} description={sharedOwner ? text.sharedUploadQuota : text.uploadDescription} onDismiss={pending ? undefined : dismiss} initialFocus={picker} restoreFocus={trigger}>
-      <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-5 sm:p-6">
+      <div className="min-h-0 space-y-4 overflow-y-auto ux-scroll-contain p-5 sm:p-6">
         <div
           onDragOver={(event) => { event.preventDefault(); if (!pending) setDragging(true); }}
-          onDragLeave={() => setDragging(false)} onDrop={handleDrop}
-          className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-5 text-center ${dragging ? 'border-primary-500 bg-primary-50' : 'border-gray-300 bg-gray-50'}`}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors ${
+            dragging
+              ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40'
+              : 'border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50'
+          }`}
         >
-          <ArrowUpTrayIcon aria-hidden="true" className="h-8 w-8 text-primary-700" />
+          <ArrowUpTrayIcon aria-hidden="true" className="h-8 w-8 text-primary-700 dark:text-primary-400" />
           <input ref={input} data-testid="upload-input" type="file" multiple hidden aria-label={text.chooseFiles} onChange={handleInput} disabled={pending} />
           <button ref={picker} type="button" className="button button-secondary" disabled={pending} onClick={() => input.current?.click()}>{text.chooseFiles}</button>
-          <p className="text-sm text-gray-600">{text.dropFiles}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">{text.dropFiles}</p>
         </div>
         {items.length > 0 && (
-          <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200 px-3" aria-live="polite">
+          <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 px-3 dark:divide-slate-800 dark:border-slate-800" aria-live="polite">
             {items.map((item) => (
               <li key={item.id} data-testid="upload-item" data-status={item.status} className="py-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium" title={item.file.name}>{item.file.name}</p>
-                    <p className="mt-0.5 text-sm text-gray-600">
+                    <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
                       {item.status === 'uploading' && item.percent === 100 ? text.processing : statusLabel[item.status]}
                       {item.status === 'uploading' && item.percent !== undefined ? ` · ${item.percent}%` : ''}
                     </p>
@@ -150,16 +158,16 @@ export function UploadDialog({ folder, suspended, trigger, onDismiss, onSessionE
                 {item.status === 'uploading' && (
                   <progress data-testid="upload-progress" aria-label={`${text.uploading}: ${item.file.name}`} value={item.percent} max={100} className="mt-2 h-2 w-full accent-primary-600" />
                 )}
-                {item.detail && <p className="mt-2 text-sm text-red-800">{item.detail}</p>}
+                {item.detail && <p className="mt-2 text-sm text-red-700 dark:text-red-400">{item.detail}</p>}
               </li>
             ))}
           </ul>
         )}
         {hasUnknown && <button type="button" className="button button-secondary" disabled={pending} onClick={() => void onRefresh().then((ok) => setRefreshStatus(ok ? text.refreshedList : text.requestFailed))}>{text.refreshList}</button>}
-        {refreshStatus && <p role="status" className="text-sm text-gray-700">{refreshStatus}</p>}
-        {confirmLeave && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">{text.discardUpload}</p>}
+        {refreshStatus && <p role="status" className="text-sm text-slate-700 dark:text-slate-300">{refreshStatus}</p>}
+        {confirmLeave && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/60 dark:text-amber-100">{text.discardUpload}</p>}
       </div>
-      <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-gray-200 px-5 py-4 sm:px-6">
+      <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800 sm:px-6">
         {confirmLeave ? (
           <>
             <button type="button" className="button button-secondary" onClick={() => { setConfirmLeave(false); picker.current?.focus(); }}>{text.keepEditing}</button>

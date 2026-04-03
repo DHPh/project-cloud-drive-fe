@@ -2,6 +2,7 @@
 
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { login, type User } from '@/lib/api';
@@ -71,7 +72,7 @@ export function LoginForm({ onSuccess, email, className = '' }: { onSuccess: (us
 }
 
 export function LoginScreen({ destination }: { destination: string }) {
-  const { text } = useLocale();
+  const { locale, text } = useLocale();
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -84,15 +85,20 @@ export function LoginScreen({ destination }: { destination: string }) {
   }
 
   return (
-    <main className="safe-top safe-bottom relative flex min-h-dvh items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4 py-20 sm:px-6">
+    <main className="safe-top safe-bottom relative flex min-h-dvh items-center justify-center bg-gradient-to-br from-primary-50 via-slate-50 to-indigo-100 px-4 py-20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 sm:px-6">
       <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+1rem)]"><LanguageSwitch /></div>
       <div className="w-full max-w-md">
         <div className="mb-7 text-center">
           <BrandIcon large />
-          <h1 className="mt-4 text-2xl font-bold text-gray-900">{text.app}</h1>
-          <p className="mt-1 text-lg font-medium text-gray-700">{text.signInTitle}</p>
+          <h1 className="mt-4 text-2xl font-bold text-slate-900 dark:text-slate-100">{text.app}</h1>
+          <p className="mt-1 text-lg font-medium text-slate-700 dark:text-slate-300">{text.signInTitle}</p>
         </div>
-        <LoginForm onSuccess={onSignIn} className="rounded-2xl bg-white p-6 shadow-xl sm:p-8" />
+        <LoginForm onSuccess={onSignIn} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-8" />
+        <p className="mt-4 text-center text-sm text-slate-600 dark:text-slate-400">
+          <Link href="/explore" prefetch={false} className="font-medium text-primary-700 hover:underline dark:text-primary-300">
+            {locale === 'vi' ? 'Xem các bảng công khai trong Khám phá →' : 'Browse public boards in Explore →'}
+          </Link>
+        </p>
       </div>
     </main>
   );

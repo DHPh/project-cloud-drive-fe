@@ -104,3 +104,9 @@ Chủ quản lý board và từng tệp trong khu vực đã đăng nhập. Màn
 ## Phạm vi PWA
 
 Baseline ưu tiên trải nghiệm responsive. Khi bổ sung chế độ cài đặt, kiểm tra `100dvh`, safe area, nút quay lại từ deep link, input mobile tối thiểu 16 px, màn hình offline và thông báo cập nhật. Service worker chỉ được lưu tài nguyên công khai đã chọn. Tệp riêng, preview riêng và API xác thực nằm ngoài cache service worker. Chạy kiểm thử WebKit và kiểm tra standalone trên iOS trước khi phát hành PWA.
+
+## Giao diện mới, Phím tắt & Command Palette
+
+1. **Khung giao diện và chủ đề.** Sidebar gom nhóm Lưu trữ / Chia sẻ / Công khai / Hệ thống kèm widget dung lượng tài khoản. Nút `+ Mới` và menu hồ sơ dùng popover gắn Portal (`position: fixed`) để không bị cắt khi cuộn sidebar hoặc gây tràn ngang. Hỗ trợ giao diện Sáng / Tối qua lớp `.dark` và lưu tùy chọn theo trình duyệt.
+2. **Tìm nhanh, Phím tắt & Xem nhanh.** `Ctrl+K` hoặc `/` mở Command Palette tìm toàn Drive và chạy lệnh nhanh. `?` mở bảng tra cứu phím tắt (`Shift+N`, `U`, `V`, `Space`, `F2`, `Delete`, `S`, `M`, `D`, `Ctrl+A`, và chuỗi `G` + phím điều hướng). `Space` hoặc nút Xem nhanh mở Lightbox ngay trên Drive; menu chuột phải dùng Portal với tên phím rõ ràng.
+3. **Kéo thả, Thông báo & An toàn.** Hỗ trợ kéo thả tệp trực tiếp vào màn hình Drive hoặc dán từ clipboard (`Ctrl+V`) để mở sẵn danh sách tải lên. Mọi thao tác xóa vĩnh viễn và xóa nhiều mục đều có hộp thoại xác nhận; thông báo nổi (Toast) tự đóng kèm link mở đích. Các quy chuẩn `scrollbar-gutter: stable`, `overscroll-behavior: contain`, `touch-action: manipulation`, `font-size >= 16px` trên mobile, nút hành động hiện sẵn trên màn hình cảm ứng (`@media (hover: none)`), và lịch Việt Nam `Asia/Ho_Chi_Minh` được áp dụng đồng bộ trong `globals.css` và các màn hình.

@@ -47,6 +47,7 @@ export function AdminActionDialog({ action, actorId, suspended, onDismiss, onExp
   const title = { invite: text.createInvite, revoke: text.revokeInvite, user: text.editAdminAccount, reset: text.issueReset }[action.kind];
   const description = { invite: text.inviteIssueDescription, revoke: text.inviteRevokeDescription, user: text.adminLockDescription, reset: text.resetIssueDescription }[action.kind];
   const unchanged = action.kind === 'user' && role === action.account.role && disabled === action.account.disabled && quota === String(action.account.quotaBytes);
+  const parsedQuota = /^\d+$/.test(quota) && Number.isSafeInteger(Number(quota)) ? Number(quota) : null;
 
   useEffect(() => () => request.current?.abort(), []);
   useEffect(() => { if (issued) linkInput.current?.focus(); }, [issued]);
@@ -115,26 +116,35 @@ export function AdminActionDialog({ action, actorId, suspended, onDismiss, onExp
   }
 
   return (
-    <Overlay open={!suspended} testId="admin-action-dialog" title={title} description={description} initialFocus={action.kind === 'invite' ? email : action.kind === 'user' ? roleField : cancel}
-      onDismiss={pending ? undefined : dismiss} restoreFallback={restoreActionFocus}>
+    <Overlay
+      open={!suspended}
+      testId="admin-action-dialog"
+      title={title}
+      description={description}
+      initialFocus={action.kind === 'invite' ? email : action.kind === 'user' ? roleField : cancel}
+      onDismiss={pending ? undefined : dismiss}
+      restoreFallback={restoreActionFocus}
+    >
       {issued ? (
-        <div className="min-h-0 space-y-3 overflow-y-auto p-5 sm:p-6">
+        <div className="min-h-0 space-y-3 overflow-y-auto ux-scroll-contain p-5 sm:p-6">
           <label className="block space-y-1 text-sm font-medium">{text.issuedAccountLink}
             <input ref={linkInput} data-testid="admin-issued-url" className="field" value={issued.url} readOnly spellCheck={false} autoComplete="off" />
           </label>
-          <p className="text-sm text-gray-700">{text.expiresAt} <time dateTime={issued.expiresAt}>{shareDateFormat(locale).format(new Date(issued.expiresAt))}</time> ({text.vietnamTime})</p>
+          <p className="text-sm text-slate-700 dark:text-slate-300">{text.expiresAt} <time dateTime={issued.expiresAt}>{shareDateFormat(locale).format(new Date(issued.expiresAt))}</time> ({text.vietnamTime})</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" data-testid="admin-copy-link" className="button button-secondary min-h-11" onClick={() => void copy()}>{text.shareCopy}</button>
             <button type="button" data-testid="admin-issued-close" className="button button-primary min-h-11" onClick={dismiss} disabled={pending}>{text.close}</button>
           </div>
-          <p role="status" className={copyStatus ? 'text-sm text-gray-700' : 'sr-only'}>{copyStatus}</p>
+          <p role="status" className={copyStatus ? 'text-sm text-slate-700 dark:text-slate-300' : 'sr-only'}>{copyStatus}</p>
         </div>
       ) : (
         <form method="post" onSubmit={(event) => void submit(event)} className="flex min-h-0 flex-col">
-          <div className="min-h-0 space-y-3 overflow-y-auto p-5 sm:p-6">
-            {action.kind === 'invite' && <label className="block space-y-1 text-sm font-medium">{text.inviteEmail}
-              <input ref={email} data-testid="admin-invite-email" name="email" className="field" type="email" autoComplete="off" maxLength={254} required readOnly={pending} />
-            </label>}
+          <div className="min-h-0 space-y-3 overflow-y-auto ux-scroll-contain p-5 sm:p-6">
+            {action.kind === 'invite' && (
+              <label className="block space-y-1 text-sm font-medium">{text.inviteEmail}
+                <input ref={email} data-testid="admin-invite-email" name="email" className="field" type="email" autoComplete="off" maxLength={254} required readOnly={pending} />
+              </label>
+            )}
             {action.kind !== 'invite' && <p className="text-sm font-medium [overflow-wrap:anywhere]">{action.kind === 'revoke' ? action.invite.email : action.account.email}</p>}
             {action.kind === 'user' && (
               <>
@@ -144,17 +154,41 @@ export function AdminActionDialog({ action, actorId, suspended, onDismiss, onExp
                   </select>
                 </label>
                 <label className="inline-flex min-h-11 items-center gap-2 text-sm font-medium">
-                  <input data-testid="admin-user-lock" type="checkbox" className="h-5 w-5 accent-primary-700" checked={disabled} disabled={pending} onChange={(event) => setDisabled(event.currentTarget.checked)} />{text.lockAccount}
+                  <input data-testid="admin-user-lock" type="checkbox" className="h-5 w-5 accent-primary-600" checked={disabled} disabled={pending} onChange={(event) => setDisabled(event.currentTarget.checked)} />{text.lockAccount}
                 </label>
-                <label className="block space-y-1 text-sm font-medium">{text.quotaInBytes}
-                  <input data-testid="admin-user-quota" className="field" inputMode="numeric" maxLength={16} value={quota} readOnly={pending} onChange={(event) => setQuota(event.currentTarget.value)} />
-                </label>
-                <p className="text-sm text-gray-700">{text.storageUsed} {readableSize(action.account.usedBytes, locale)}</p>
+                <div className="space-y-1.5">
+                  <label className="block space-y-1 text-sm font-medium">{text.quotaInBytes}
+                    <input data-testid="admin-user-quota" className="field font-mono" inputMode="numeric" maxLength={16} value={quota} readOnly={pending} onChange={(event) => setQuota(event.currentTarget.value)} />
+                  </label>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    {parsedQuota !== null ? `= ${readableSize(parsedQuota, locale)}` : text.invalidQuota}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: '512 MB', bytes: 512 * 1024 * 1024 },
+                      { label: '1 GB', bytes: 1024 ** 3 },
+                      { label: '2 GB', bytes: 2 * 1024 ** 3 },
+                      { label: '5 GB', bytes: 5 * 1024 ** 3 },
+                      { label: '10 GB', bytes: 10 * 1024 ** 3 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        disabled={pending}
+                        onClick={() => setQuota(String(preset.bytes))}
+                        className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-sm text-slate-700 dark:text-slate-300">{text.storageUsed} {readableSize(action.account.usedBytes, locale)}</p>
               </>
             )}
-            {error && <p role="alert" data-testid="admin-action-error" className="text-sm text-red-800">{error}</p>}
+            {error && <p role="alert" data-testid="admin-action-error" className="text-sm text-red-700 dark:text-red-400">{error}</p>}
           </div>
-          <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-gray-200 px-5 py-3 sm:px-6">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-200 px-5 py-3 dark:border-slate-800 sm:px-6">
             <button type="button" ref={cancel} data-testid="admin-action-cancel" disabled={pending} onClick={dismiss} className="button button-secondary min-h-11">{text.cancel}</button>
             <button type="submit" data-testid="admin-action-submit" disabled={pending || unchanged} className={`button min-h-11 ${action.kind === 'revoke' ? 'button-danger' : 'button-primary'}`}>
               {pending ? text.saving : action.kind === 'user' ? text.save : title}

@@ -1,12 +1,13 @@
 'use client';
 
-import { ArrowDownTrayIcon, ChevronLeftIcon, ChevronRightIcon, DocumentIcon, FolderIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { ApiError, downloadUrl, listSharedItems, type User } from '@/lib/api';
 import { readableSize } from '@/lib/file-details';
+import { folderIconClasses, getFileIcon } from '@/lib/file-icons';
 import { localizedError } from '@/lib/messages';
 import { driveHref, fileHref, pageNumber, sharedHref } from '@/lib/routes';
 import { shareDateFormat } from '@/lib/share-expiry';
@@ -86,10 +87,10 @@ export function SharedFilesScreen({ initialUser }: { initialUser: User }) {
             <ul aria-label={text.sharedWithMe} aria-busy={query.isFetching} className="space-y-2">
               {items.map((item) => {
                 const name = item.kind === 'folder' ? item.name : item.originalName;
-                const Icon = item.kind === 'folder' ? FolderIcon : DocumentIcon;
+                const iconMeta = item.kind === 'folder' ? { Icon: FolderIcon, classes: folderIconClasses } : getFileIcon(item.mimeType);
                 return (
                   <li key={item.id} data-testid={item.kind === 'folder' ? 'shared-folder' : 'shared-item'} data-item-id={item.id} className={`panel grid min-w-0 items-center gap-2 px-2 py-2.5 sm:gap-3 sm:px-3 ${item.kind === 'folder' ? 'grid-cols-[auto_minmax(0,1fr)]' : 'grid-cols-[auto_minmax(0,1fr)_auto]'}`}>
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md sm:h-10 sm:w-10 ${item.kind === 'folder' ? 'bg-amber-50 text-amber-700' : 'bg-primary-100 text-primary-800'}`}><Icon aria-hidden="true" className="h-6 w-6" /></span>
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 ${iconMeta.classes}`}><iconMeta.Icon aria-hidden="true" className="h-5 w-5" /></span>
                     <div className="min-w-0">
                       <Link data-testid={item.kind === 'folder' ? 'shared-folder-link' : 'shared-file-link'} href={item.kind === 'folder' ? driveHref(item.id) : fileHref(item.id)} prefetch={false} className="line-clamp-2 break-words rounded-sm text-sm font-medium text-primary-800 hover:underline" title={name}>{name}</Link>
                       <p className="mt-0.5 break-words text-xs text-gray-600">{item.kind === 'folder' ? text.sharedFolderBy : text.sharedBy} <span className="font-medium">{item.ownerName}</span>{item.kind === 'file' && <> <span aria-hidden="true">·</span> {readableSize(item.size, locale)}</>}</p>

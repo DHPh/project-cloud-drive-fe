@@ -1,12 +1,13 @@
 'use client';
 
-import { ArrowUturnLeftIcon, ChevronLeftIcon, ChevronRightIcon, DocumentIcon, FolderIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowUturnLeftIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, listFolder, listTrash, restoreFile, restoreFolder, type TrashItem, type User } from '@/lib/api';
 import { readableSize } from '@/lib/file-details';
+import { folderIconClasses, getFileIcon } from '@/lib/file-icons';
 import { localizedError } from '@/lib/messages';
 import { driveHref, pageNumber, trashHref } from '@/lib/routes';
 import { useAccountSession } from '../account-session';
@@ -229,10 +230,11 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
                 const name = item.kind === 'folder' ? item.name : item.originalName;
                 const available = item.purgeStatus === 'available';
                 const status = item.purgeStatus === 'purging' ? text.trashPurging : item.purgeStatus === 'retrying' ? text.trashRetrying : canAct ? text.trashAvailable : text.updating;
+                const iconMeta = item.kind === 'folder' ? { Icon: FolderIcon, classes: folderIconClasses } : getFileIcon(item.mimeType);
                 return (
                   <li key={key} data-testid="trash-item" data-item-id={item.id} data-item-kind={item.kind} data-purge-status={available && !canAct ? undefined : item.purgeStatus} className="panel grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-2 p-2.5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-3 sm:px-3">
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md sm:h-10 sm:w-10 ${item.kind === 'folder' ? 'bg-amber-50 text-amber-700' : 'bg-primary-100 text-primary-800'}`}>
-                      {item.kind === 'folder' ? <FolderIcon aria-hidden="true" className="h-6 w-6" /> : <DocumentIcon aria-hidden="true" className="h-6 w-6" />}
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 ${iconMeta.classes}`}>
+                      <iconMeta.Icon aria-hidden="true" className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
                       <p className="text-sm font-medium [overflow-wrap:anywhere] sm:line-clamp-2" title={name}>{name}</p>

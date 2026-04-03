@@ -7,7 +7,7 @@ export function LanguageSwitch() {
   return (
     <select
       aria-label={text.language}
-      className="h-10 rounded-lg border border-gray-200 bg-white px-1.5 text-base sm:px-2.5 sm:text-sm"
+      className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-base text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:text-sm"
       value={locale}
       onChange={(event) => setLocale(event.currentTarget.value === 'en' ? 'en' : 'vi')}
     >
