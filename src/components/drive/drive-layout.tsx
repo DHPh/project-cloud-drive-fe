@@ -4,6 +4,7 @@ import {
   ArrowLeftOnRectangleIcon,
   ArrowUpTrayIcon,
   Bars3Icon,
+  ChevronDownIcon,
   ClockIcon,
   FolderIcon,
   FolderPlusIcon,
@@ -11,6 +12,7 @@ import {
   MagnifyingGlassIcon,
   MoonIcon,
   PlusIcon,
+  QuestionMarkCircleIcon,
   RectangleStackIcon,
   ShareIcon,
   ShieldCheckIcon,
@@ -25,7 +27,6 @@ import { createPortal } from 'react-dom';
 import type { User } from '@/lib/api';
 import { BrandIcon } from '../brand';
 import { CommandPalette } from '../command-palette';
-import { LanguageSwitch } from '../language-switch';
 import { Overlay } from '../overlay';
 import { useLocale, useTheme } from '../providers';
 import { ShortcutsDialog } from '../shortcuts-dialog';
@@ -34,8 +35,15 @@ import { useGlobalShortcuts } from '../use-global-shortcuts';
 
 type SearchProps = { search: string; onSearch: (search: string) => void };
 
-export function DriveSearch({ search, onSearch, label, testId = 'drive-search' }: SearchProps & { label?: string; testId?: string }) {
-  const { text } = useLocale();
+export function DriveSearch({
+  search,
+  onSearch,
+  label,
+  testId = 'drive-search',
+  onOpenPalette,
+}: SearchProps & { label?: string; testId?: string; onOpenPalette?: () => void }) {
+  const { locale, text } = useLocale();
+  const vi = locale === 'vi';
   const input = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const composing = useRef(false);
@@ -59,8 +67,12 @@ export function DriveSearch({ search, onSearch, label, testId = 'drive-search' }
   }
 
   return (
-    <form className="relative flex w-full max-w-2xl items-center" role="search" onSubmit={(event) => { event.preventDefault(); schedule(input.current?.value ?? '', true); }}>
-      <MagnifyingGlassIcon aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
+    <form
+      className="flex h-10 w-full max-w-[620px] items-center gap-2 rounded-full border border-line bg-surface-canvas pl-3.5 pr-2 shadow-sm transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent-soft sm:h-9"
+      role="search"
+      onSubmit={(event) => { event.preventDefault(); schedule(input.current?.value ?? '', true); }}
+    >
+      <MagnifyingGlassIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-ink-muted" />
       <input
         ref={input}
         data-testid={testId}
@@ -69,7 +81,7 @@ export function DriveSearch({ search, onSearch, label, testId = 'drive-search' }
         autoComplete="off"
         maxLength={255}
         defaultValue={search}
-        className="h-10 w-full rounded-full border border-slate-200 bg-white pl-10 pr-4 text-base text-slate-900 shadow-sm placeholder:text-slate-600 focus:border-primary-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400 sm:h-10 sm:text-sm"
+        className="w-full min-w-0 bg-transparent text-base text-ink placeholder:text-ink-muted focus:outline-none sm:text-[13.5px]"
         placeholder={label ?? text.searchPlaceholder}
         aria-label={label ?? text.search}
         onChange={(event) => schedule(event.currentTarget.value)}
@@ -79,6 +91,17 @@ export function DriveSearch({ search, onSearch, label, testId = 'drive-search' }
           if (event.key === 'Enter' && (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)) event.preventDefault();
         }}
       />
+      {onOpenPalette && (
+        <button
+          type="button"
+          onClick={onOpenPalette}
+          title={vi ? 'Mở Command Palette (Ctrl+K)' : 'Open Command Palette (Ctrl+K)'}
+          className="hidden shrink-0 items-center gap-1 rounded-full border border-line bg-surface-subtle px-2 py-0.5 text-[11px] font-semibold text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink md:inline-flex"
+        >
+          <span>{vi ? 'Lệnh' : 'Cmd'}</span>
+          <kbd className="font-mono text-[10.5px] font-medium">Ctrl+K</kbd>
+        </button>
+      )}
     </form>
   );
 }
@@ -147,10 +170,10 @@ function NavigationLinks({ active, homeHref, admin, mobile = false, onNavigate }
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {groups.map((group) => (
         <div key={group.title}>
-          <p className="mb-1 px-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+          <p className="mb-1.5 px-2.5 text-[11px] font-bold uppercase tracking-[0.06em] text-ink-muted">
             {group.title}
           </p>
           <div className="space-y-0.5">
@@ -162,16 +185,16 @@ function NavigationLinks({ active, homeHref, admin, mobile = false, onNavigate }
                 onNavigate={onNavigate}
                 data-testid={testId}
                 aria-current={id === active ? 'page' : undefined}
-                className={`group flex min-h-10 items-start gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium leading-snug transition-colors ${
+                className={`group flex min-h-9 items-start gap-2.5 rounded-md px-2.5 py-2 text-[13.5px] leading-[1.35] transition-colors ${
                   id === active
-                    ? 'bg-primary-50 text-primary-800 dark:bg-primary-500/20 dark:text-primary-200'
-                    : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                    ? 'bg-accent-soft font-semibold text-accent-text'
+                    : 'font-medium text-ink-secondary hover:bg-surface-hover hover:text-ink'
                 }`}
               >
-                <Icon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                <Icon aria-hidden="true" className="mt-[1px] h-[17px] w-[17px] shrink-0" />
                 <span className="min-w-0 flex-1 break-words">{label}</span>
                 {chord && (
-                  <span aria-hidden="true" className="mt-0.5 shrink-0 whitespace-nowrap font-mono text-[10px] text-slate-600 opacity-0 transition-opacity group-hover:opacity-100 dark:text-slate-400">
+                  <span aria-hidden="true" className="mt-0.5 shrink-0 whitespace-nowrap font-mono text-[10.5px] text-ink-muted opacity-0 transition-opacity group-hover:opacity-100">
                     {chord}
                   </span>
                 )}
@@ -185,8 +208,8 @@ function NavigationLinks({ active, homeHref, admin, mobile = false, onNavigate }
 }
 
 export function DriveLayout({ user, drive, homeHref = '/drive', section = drive ? 'drive' : 'trash', signingOut, signOutError, onSignOut, children }: Props) {
-  const { locale, text } = useLocale();
-  const { theme, toggleTheme } = useTheme();
+  const { locale, setLocale, text } = useLocale();
+  const { theme, setTheme, toggleTheme } = useTheme();
   const vi = locale === 'vi';
   const [navigationOpen, setNavigationOpen] = useState(false);
   const [newMenuPos, setNewMenuPos] = useState<{ left: number; top: number } | null>(null);
@@ -204,6 +227,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
 
   const mainId = `${section}-main`;
   const showDriveActions = Boolean(drive?.onCreateFolder || drive?.onUpload);
+  const displayName = user.name || user.email;
   const initials = (user.name.trim().split(/\s+/).map((part) => part[0]).filter(Boolean).slice(0, 2).join('') || user.email[0] || '?').toUpperCase();
 
   const openPalette = useCallback(() => {
@@ -287,7 +311,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
     if (!rect) return;
     setProfileMenuPos({
       right: Math.max(8, window.innerWidth - rect.right),
-      top: Math.min(rect.bottom + 8, window.innerHeight - 260),
+      top: Math.min(rect.bottom + 8, window.innerHeight - 330),
     });
   }
 
@@ -297,24 +321,24 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
   }
 
   return (
-    <div className="safe-top min-h-dvh bg-slate-50 dark:bg-slate-950 lg:grid lg:min-h-dvh lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:grid-rows-[4rem_1fr]">
-      <a href={`#${mainId}`} className="sr-only z-[60] focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-slate-900">
+    <div className="safe-top min-h-dvh bg-surface-rail lg:grid lg:min-h-dvh lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:grid-rows-[3.5rem_1fr]">
+      <a href={`#${mainId}`} className="sr-only z-[60] focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:rounded focus:bg-surface-elevated focus:px-4 focus:py-2 focus:text-ink">
         {text.skip}
       </a>
 
-      <header className="sticky top-0 z-30 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 border-b border-slate-200 bg-slate-50/95 px-3 py-2 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/95 sm:h-16 sm:flex-nowrap sm:gap-3 sm:px-4 sm:py-0 lg:col-span-2">
-        <div className="order-1 flex shrink-0 items-center gap-1.5 sm:gap-2.5 lg:w-[14rem]">
-          <button type="button" ref={toggleNavigation} className="icon-button h-9 w-9 sm:h-10 sm:w-10 lg:hidden" aria-label={text.openNavigation} onClick={() => setNavigationOpen(true)}>
-            <Bars3Icon className="h-6 w-6" />
+      <header className="sticky top-0 z-30 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 border-b border-line bg-surface-rail px-3 py-2 sm:h-14 sm:flex-nowrap sm:gap-3 sm:px-4 sm:py-0 lg:col-span-2">
+        <div className="order-1 flex shrink-0 items-center gap-2 lg:w-[14.5rem]">
+          <button type="button" ref={toggleNavigation} className="icon-button lg:hidden" aria-label={text.openNavigation} onClick={() => setNavigationOpen(true)}>
+            <Bars3Icon className="h-5 w-5" />
           </button>
 
-          <Link href={homeHref} prefetch={false} className="flex shrink-0 items-center gap-2 rounded-md text-slate-900 dark:text-slate-100">
+          <Link href={homeHref} prefetch={false} className="flex shrink-0 items-center gap-2.5 rounded-md text-ink">
             <BrandIcon />
-            <span className="text-base font-bold tracking-tight sm:text-lg">{text.app}</span>
+            <span className="text-[15px] font-bold tracking-[-0.02em] sm:text-base">{text.app}</span>
           </Link>
         </div>
 
-        <div className="order-2 ml-auto flex shrink-0 items-center gap-1 sm:order-3 sm:ml-0 sm:gap-1.5">
+        <div className="order-2 ml-auto flex shrink-0 items-center gap-1.5 sm:order-3 sm:ml-0">
           <button
             ref={shortcutTrigger}
             type="button"
@@ -323,72 +347,71 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
             aria-label={vi ? 'Phím tắt & Macro' : 'Keyboard shortcuts'}
             title={vi ? 'Phím tắt (?)' : 'Shortcuts (?)'}
           >
-            <span className="font-mono text-sm font-bold">?</span>
+            <QuestionMarkCircleIcon className="h-[18px] w-[18px]" />
           </button>
           <button
             type="button"
             onClick={toggleTheme}
-            className="icon-button h-9 w-9 sm:h-10 sm:w-10"
+            className="icon-button"
             aria-label={theme === 'dark' ? (vi ? 'Chuyển giao diện sáng' : 'Switch to light mode') : (vi ? 'Chuyển giao diện tối' : 'Switch to dark mode')}
             title={theme === 'dark' ? (vi ? 'Giao diện sáng' : 'Light mode') : (vi ? 'Giao diện tối' : 'Dark mode')}
           >
-            {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+            {theme === 'dark' ? <SunIcon className="h-[18px] w-[18px]" /> : <MoonIcon className="h-[18px] w-[18px]" />}
           </button>
-          <LanguageSwitch />
+
           <button
             ref={profileTrigger}
             type="button"
             onClick={toggleProfileMenu}
             aria-expanded={Boolean(profileMenuPos)}
-            aria-haspopup="menu"
-            aria-label={`${initials} — ${text.account}: ${user.name || user.email}`}
-            title={user.name || user.email}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-600 to-indigo-600 text-xs font-bold text-white shadow-sm ring-2 ring-white hover:opacity-95 dark:ring-slate-900 sm:h-9 sm:w-9"
+            aria-haspopup="dialog"
+            aria-label={`${initials} ${displayName} — ${text.account}`}
+            title={displayName}
+            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-line bg-surface-canvas p-1 text-ink shadow-sm transition-colors hover:border-line-strong hover:bg-surface-hover sm:pr-2.5"
           >
-            <span>{initials}</span>
+            <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-500 text-xs font-bold text-white">
+              {initials}
+            </span>{' '}
+            <span className="hidden max-w-[110px] truncate text-[12.5px] font-semibold sm:inline">{displayName}</span>
+            <ChevronDownIcon aria-hidden="true" className="hidden h-3.5 w-3.5 text-ink-muted sm:inline" />
           </button>
+
+          <span aria-hidden="true" className="mx-0.5 hidden h-5 w-px bg-line sm:inline-block" />
+
           <button
             type="button"
             data-testid="logout"
             disabled={signingOut}
             onClick={onSignOut}
-            className="icon-button h-9 w-9 shrink-0 sm:h-10 sm:w-10"
+            className="icon-button shrink-0 hover:bg-danger-soft hover:text-danger"
             aria-label={signingOut ? text.signOutPending : text.signOut}
             title={text.signOut}
           >
-            <ArrowLeftOnRectangleIcon className="h-5 w-5" />
+            <ArrowLeftOnRectangleIcon className="h-[18px] w-[18px]" />
           </button>
         </div>
 
-        <div className="order-3 flex w-full min-w-0 items-center gap-2 sm:order-2 sm:w-auto sm:flex-1">
+        <div className="order-3 flex w-full min-w-0 items-center sm:order-2 sm:w-auto sm:flex-1">
           {drive ? (
-            <>
-              <DriveSearch key={drive.folder} search={drive.search} onSearch={drive.onSearch} />
-              <button
-                type="button"
-                onClick={openPalette}
-                title={vi ? 'Mở Command Palette (Ctrl+K)' : 'Open Command Palette (Ctrl+K)'}
-                className="hidden h-9 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 md:inline-flex"
-              >
-                <span>{vi ? 'Lệnh' : 'Cmd'}</span>
-                <kbd className="kbd-chip">Ctrl+K</kbd>
-              </button>
-            </>
+            <DriveSearch key={drive.folder} search={drive.search} onSearch={drive.onSearch} onOpenPalette={openPalette} />
           ) : (
             <button
               type="button"
               onClick={openPalette}
-              className="flex h-10 w-full max-w-md items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 text-left text-sm text-slate-600 shadow-sm hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              className="flex h-10 w-full max-w-[620px] items-center gap-2 rounded-full border border-line bg-surface-canvas pl-3.5 pr-2 text-left text-[13.5px] text-ink-muted shadow-sm transition hover:border-line-strong sm:h-9"
             >
               <MagnifyingGlassIcon aria-hidden="true" className="h-4 w-4 shrink-0" />
               <span className="min-w-0 flex-1 truncate">{vi ? 'Tìm trong Drive hoặc chạy lệnh…' : 'Search Drive or run a command…'}</span>
-              <kbd className="kbd-chip hidden sm:inline-flex">Ctrl+K</kbd>
+              <span className="hidden shrink-0 items-center gap-1 rounded-full border border-line bg-surface-subtle px-2 py-0.5 text-[11px] font-semibold text-ink-secondary sm:inline-flex">
+                <span>{vi ? 'Lệnh' : 'Cmd'}</span>
+                <kbd className="font-mono text-[10.5px] font-medium">Ctrl+K</kbd>
+              </span>
             </button>
           )}
         </div>
       </header>
 
-      <aside className={`min-w-0 overflow-x-hidden overflow-y-auto bg-slate-50 px-3 pt-3 dark:bg-slate-950 lg:pt-4 ${showDriveActions ? '' : 'hidden lg:block'}`}>
+      <aside className={`min-w-0 overflow-x-hidden overflow-y-auto border-r border-line bg-surface-rail px-3 py-3.5 ${showDriveActions ? '' : 'hidden lg:block'}`}>
         {drive?.onCreateFolder && (
           <div className="mb-4">
             <button
@@ -398,10 +421,13 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
               aria-expanded={Boolean(newMenuPos)}
               aria-haspopup="menu"
               onClick={toggleNewMenu}
-              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 lg:justify-start"
+              className="flex h-[42px] w-full items-center justify-between rounded-[10px] bg-accent px-3.5 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(37,99,235,0.25)] transition hover:bg-accent-hover active:scale-[0.99]"
             >
-              <PlusIcon aria-hidden="true" className="h-5 w-5 shrink-0" />
-              <span>{text.newItem}</span>
+              <span className="flex items-center gap-2">
+                <PlusIcon aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
+                <span>{text.newItem}</span>
+              </span>
+              <ChevronDownIcon aria-hidden="true" className="h-4 w-4 opacity-85" />
             </button>
           </div>
         )}
@@ -409,7 +435,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
           <button
             type="button"
             data-testid="upload-open"
-            className="button button-primary mb-4 min-h-11 w-full"
+            className="button button-primary mb-4 min-h-10 w-full"
             onClick={(event) => drive.onUpload?.(event.currentTarget)}
           >
             <ArrowUpTrayIcon aria-hidden="true" className="h-5 w-5" />
@@ -435,9 +461,9 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
         </nav>
       </Overlay>
 
-      <main id={mainId} tabIndex={-1} className="safe-bottom min-w-0 bg-white dark:bg-slate-900 lg:m-0 lg:min-h-[calc(100dvh-4rem)] lg:rounded-tl-2xl lg:border-l lg:border-t lg:border-slate-200 dark:lg:border-slate-800">
+      <main id={mainId} tabIndex={-1} className="safe-bottom min-w-0 bg-surface-canvas lg:min-h-[calc(100dvh-3.5rem)]">
         {signOutError && (
-          <p role="alert" className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/60 dark:text-red-200">
+          <p role="alert" className="m-4 rounded-lg border border-red-200 bg-danger-soft p-3 text-sm text-danger dark:border-red-900">
             {signOutError}
           </p>
         )}
@@ -449,30 +475,30 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
           ref={newMenuRef}
           role="menu"
           style={{ left: newMenuPos.left, top: newMenuPos.top, width: 264 }}
-          className="ux-popover-enter fixed z-[75] rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+          className="ux-popover-enter fixed z-[85] rounded-[10px] border border-line bg-surface-elevated p-1.5 shadow-2xl"
         >
           <button
             type="button"
             role="menuitem"
             data-testid="folder-create-open"
-            className="flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] font-medium text-ink hover:bg-surface-hover"
             onClick={() => startDriveAction('onCreateFolder')}
           >
-            <FolderPlusIcon aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-slate-600 dark:text-slate-400" />
+            <FolderPlusIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" />
             <span className="flex-1">{text.createFolder}</span>
-            <span aria-hidden="true" className="mt-0.5 shrink-0 font-mono text-[11px] text-slate-600 dark:text-slate-400">Shift+N</span>
+            <span aria-hidden="true" className="mt-0.5 shrink-0 font-mono text-[11px] text-ink-muted">Shift+N</span>
           </button>
           {drive?.onUpload && (
             <button
               type="button"
               role="menuitem"
               data-testid="upload-open"
-              className="flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] font-medium text-ink hover:bg-surface-hover"
               onClick={() => startDriveAction('onUpload')}
             >
-              <ArrowUpTrayIcon aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-slate-600 dark:text-slate-400" />
+              <ArrowUpTrayIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" />
               <span className="flex-1">{text.upload}</span>
-              <span aria-hidden="true" className="mt-0.5 shrink-0 font-mono text-[11px] text-slate-600 dark:text-slate-400">U</span>
+              <span aria-hidden="true" className="mt-0.5 shrink-0 font-mono text-[11px] text-ink-muted">U</span>
             </button>
           )}
         </div>,
@@ -482,45 +508,94 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
       {profileMenuPos && typeof document !== 'undefined' && createPortal(
         <div
           ref={profileMenuRef}
-          role="menu"
-          style={{ right: profileMenuPos.right, top: profileMenuPos.top, width: 256 }}
-          className="ux-popover-enter fixed z-[75] rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+          role="dialog"
+          aria-label={text.account}
+          style={{ right: profileMenuPos.right, top: profileMenuPos.top, width: 268 }}
+          className="ux-popover-enter fixed z-[85] rounded-[10px] border border-line bg-surface-elevated p-2.5 shadow-2xl"
         >
-          <div className="border-b border-slate-200 px-2 pb-2.5 pt-1 dark:border-slate-800">
-            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</p>
-            <p className="truncate text-xs text-slate-600 dark:text-slate-400">{user.email}</p>
+          <div className="mb-1.5 border-b border-line px-1.5 pb-2.5 pt-0.5">
+            <p className="truncate text-[13.5px] font-semibold text-ink">
+              {displayName}{user.role === 'admin' ? ' (Admin)' : ''}
+            </p>
+            <p className="truncate text-xs text-ink-muted">{user.email}</p>
           </div>
-          <div className="mt-1.5 space-y-0.5">
+
+          <div className="flex items-center justify-between px-1.5 py-1.5 text-[12.5px] text-ink-secondary">
+            <span>{text.language}</span>
+            <div role="group" aria-label={text.language} className="inline-flex rounded-md border border-line bg-surface-subtle p-0.5">
+              {(['vi', 'en'] as const).map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => setLocale(lang)}
+                  className={`rounded px-2.5 py-0.5 text-[11.5px] font-semibold uppercase transition ${
+                    locale === lang ? 'bg-surface-canvas text-ink shadow-sm' : 'text-ink-secondary hover:text-ink'
+                  }`}
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between px-1.5 py-1.5 text-[12.5px] text-ink-secondary">
+            <span>{vi ? 'Giao diện' : 'Theme'}</span>
+            <div role="group" aria-label={vi ? 'Giao diện' : 'Theme'} className="inline-flex rounded-md border border-line bg-surface-subtle p-0.5">
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                className={`rounded px-2.5 py-0.5 text-[11.5px] font-semibold transition ${
+                  theme === 'light' ? 'bg-surface-canvas text-ink shadow-sm' : 'text-ink-secondary hover:text-ink'
+                }`}
+              >
+                {vi ? 'Sáng' : 'Light'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                className={`rounded px-2.5 py-0.5 text-[11.5px] font-semibold transition ${
+                  theme === 'dark' ? 'bg-surface-canvas text-ink shadow-sm' : 'text-ink-secondary hover:text-ink'
+                }`}
+              >
+                {vi ? 'Tối' : 'Dark'}
+              </button>
+            </div>
+          </div>
+
+          <div className="my-1.5 h-px bg-line" />
+
+          <div className="space-y-0.5">
             <Link
               href="/account"
               prefetch={false}
-              role="menuitem"
               onClick={() => setProfileMenuPos(null)}
-              className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-[13px] font-medium text-ink hover:bg-surface-hover"
             >
-              <UserCircleIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{text.account}</span>
+              <UserCircleIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" />
+              <span>{text.accountStorage}</span>
             </Link>
             <button
               type="button"
-              role="menuitem"
-              onClick={() => { toggleTheme(); setProfileMenuPos(null); }}
-              className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              {theme === 'dark' ? <SunIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" /> : <MoonIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />}
-              <span>{theme === 'dark' ? (vi ? 'Giao diện sáng' : 'Light mode') : (vi ? 'Giao diện tối' : 'Dark mode')}</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
               onClick={() => { setProfileMenuPos(null); openShortcuts(); }}
-              className="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-left text-[13px] font-medium text-ink hover:bg-surface-hover"
             >
-              <span aria-hidden="true" className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center font-mono text-xs font-bold">?</span>
-              <span className="flex-1">{vi ? 'Phím tắt & Macro' : 'Shortcuts & Macros'}</span>
-              <span className="font-mono text-[11px] text-slate-600 dark:text-slate-400">?</span>
+              <QuestionMarkCircleIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" />
+              <span className="flex-1">{vi ? 'Bảng phím tắt' : 'Keyboard shortcuts'}</span>
+              <span className="mt-0.5 font-mono text-[11px] text-ink-muted">?</span>
             </button>
           </div>
+
+          <div className="my-1.5 h-px bg-line" />
+
+          <button
+            type="button"
+            disabled={signingOut}
+            onClick={() => { setProfileMenuPos(null); onSignOut(); }}
+            className="flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-left text-[13px] font-medium text-danger hover:bg-danger-soft"
+          >
+            <ArrowLeftOnRectangleIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{signingOut ? text.signOutPending : text.signOut}</span>
+          </button>
         </div>,
         document.body,
       )}

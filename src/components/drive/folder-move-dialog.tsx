@@ -159,9 +159,9 @@ export function MoveDialog({ item, userId, trigger, suspended, onDismiss, onExpi
           </div>
         )}
       </div>
-      <div className="shrink-0 space-y-2 border-t border-gray-200 px-5 py-4 sm:px-6">
-        {error && <p data-testid={`${testId}-error`} role="alert" className="text-sm text-red-800">{error}</p>}
-        {sameParent && <p className="text-sm text-gray-600">{item.kind === 'folder' ? text.sameFolderParent : text.sameFileParent}</p>}
+      <div className="shrink-0 space-y-2 border-t border-line px-5 py-4 sm:px-6">
+        {error && <p data-testid={`${testId}-error`} role="alert" className="text-sm text-danger">{error}</p>}
+        {sameParent && <p className="text-sm text-ink-secondary">{item.kind === 'folder' ? text.sameFolderParent : text.sameFileParent}</p>}
         <div className="flex flex-wrap justify-end gap-2">
           <button type="button" data-testid={`${testId}-cancel`} className="button button-secondary min-h-11" disabled={pending} onClick={dismiss}>{text.cancel}</button>
           <button type="button" data-testid={`${testId}-submit`} className="button button-primary min-h-11 aria-disabled:cursor-not-allowed aria-disabled:opacity-60" aria-disabled={!canMove} aria-busy={pending} onClick={() => void submit()}>

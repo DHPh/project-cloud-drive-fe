@@ -158,18 +158,18 @@ export function DriveItems({
   if (!grid) {
     return (
       <section aria-label={title} className="space-y-2">
-        <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+        <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-ink-muted">
           {title} ({items.length})
         </h2>
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="hidden grid-cols-[auto_minmax(0,1fr)_88px_132px_auto] items-center gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400 sm:grid">
+        <div className="overflow-hidden rounded-xl border border-line bg-surface-elevated shadow-sm">
+          <div className="hidden grid-cols-[auto_minmax(0,1fr)_88px_132px_auto] items-center gap-3 border-b border-line bg-surface-subtle px-3 py-2 text-xs font-semibold uppercase tracking-wider text-ink-muted sm:grid">
             <span className="w-6" aria-hidden="true" />
             <span>{vi ? 'Tên' : 'Name'}</span>
             <span>{text.fileSize}</span>
             <span>{text.updated}</span>
             <span className="text-right">{vi ? 'Thao tác' : 'Actions'}</span>
           </div>
-          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+          <ul className="divide-y divide-line">
             {items.map((item) => {
               const icon = item.kind === 'folder' ? { Icon: FolderIcon, classes: folderIconClasses } : getFileIcon(item.mimeType);
               const name = item.kind === 'folder' ? item.name : item.originalName;
@@ -184,8 +184,8 @@ export function DriveItems({
                   onContextMenu={(event) => onContextMenu?.(item, event)}
                   className={`group flex flex-col gap-2 px-3 py-2.5 transition-colors sm:grid sm:grid-cols-[auto_minmax(0,1fr)_88px_132px_auto] sm:items-center sm:gap-3 ${
                     isSelected
-                      ? 'bg-primary-50/70 dark:bg-primary-950/40'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      ? 'bg-surface-selected'
+                      : 'hover:bg-surface-hover'
                   }`}
                 >
                   <div className="flex min-w-0 items-center gap-2.5 sm:contents">
@@ -197,8 +197,8 @@ export function DriveItems({
                         onClick={(event) => { event.stopPropagation(); onToggleCheck(item); }}
                         className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors ${
                           isSelected
-                            ? 'border-primary-600 bg-primary-600 text-white'
-                            : 'border-slate-300 bg-white text-transparent hover:border-slate-400 dark:border-slate-600 dark:bg-slate-900'
+                            ? 'border-accent bg-accent text-white'
+                            : 'border-line-strong bg-surface-canvas text-transparent hover:border-ink-muted'
                         }`}
                       >
                         <CheckIcon aria-hidden="true" className="h-3.5 w-3.5" />
@@ -217,7 +217,7 @@ export function DriveItems({
                             href={fileHref(item.id)}
                             prefetch={false}
                             onClick={(event) => event.stopPropagation()}
-                            className="block truncate rounded-sm text-sm font-medium text-primary-700 hover:underline dark:text-primary-300"
+                            className="block truncate rounded-sm text-sm font-medium text-accent-text hover:underline"
                             title={name}
                           >
                             {name}
@@ -227,23 +227,23 @@ export function DriveItems({
                             href={driveHref(item.id, '', 1, view)}
                             prefetch={false}
                             onClick={(event) => event.stopPropagation()}
-                            className="block truncate rounded-sm text-sm font-medium text-slate-900 hover:text-primary-700 hover:underline dark:text-slate-100 dark:hover:text-primary-300"
+                            className="block truncate rounded-sm text-sm font-medium text-ink hover:text-accent-text hover:underline"
                             title={name}
                           >
                             {name}
                           </Link>
                         )}
-                        <p className="text-xs text-slate-600 dark:text-slate-400 sm:hidden">
+                        <p className="text-xs text-ink-muted sm:hidden">
                           {item.kind === 'file' ? `${readableSize(item.size, locale)} · ` : ''}
                           {dateFormat.format(new Date(item.updatedAt))}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <span className="hidden text-xs tabular-nums text-slate-600 dark:text-slate-400 sm:block">
+                  <span className="hidden text-xs tabular-nums text-ink-muted sm:block">
                     {item.kind === 'file' ? readableSize(item.size, locale) : '—'}
                   </span>
-                  <time dateTime={item.updatedAt} className="hidden text-xs text-slate-600 dark:text-slate-400 sm:block">
+                  <time dateTime={item.updatedAt} className="hidden text-xs text-ink-muted sm:block">
                     {dateFormat.format(new Date(item.updatedAt))}
                   </time>
                   <div className="flex justify-end">{actionButtons(item, name)}</div>
@@ -258,7 +258,7 @@ export function DriveItems({
 
   return (
     <section aria-label={title} className="space-y-2.5">
-      <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+      <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-ink-muted">
         {title} ({items.length})
       </h2>
       <ul
@@ -281,8 +281,8 @@ export function DriveItems({
                 onContextMenu={(event) => onContextMenu?.(item, event)}
                 className={`panel group relative flex min-w-0 flex-col gap-2 px-3.5 py-2.5 transition-all ${
                   isSelected
-                    ? 'border-primary-600 bg-primary-50/70 ring-1 ring-primary-600 dark:border-primary-400 dark:bg-primary-950/40 dark:ring-primary-400'
-                    : 'hover:border-slate-300 hover:bg-slate-50/70 dark:hover:border-slate-700 dark:hover:bg-slate-800/50'
+                    ? 'border-accent bg-surface-selected ring-1 ring-accent'
+                    : 'hover:border-line-strong hover:bg-surface-hover'
                 }`}
               >
                 <div className="flex min-w-0 items-center gap-3">
@@ -306,10 +306,10 @@ export function DriveItems({
                         onClick={(event) => { event.stopPropagation(); onToggleCheck(item); }}
                         className={`ux-hover-reveal absolute inset-0 m-auto inline-flex h-6 w-6 items-center justify-center rounded-md border transition-opacity ${
                           isSelected
-                            ? 'border-primary-600 bg-primary-600 text-white opacity-100'
+                            ? 'border-accent bg-accent text-white opacity-100'
                             : hasAnySelection
-                              ? 'border-slate-300 bg-white text-transparent opacity-100 dark:border-slate-600 dark:bg-slate-900'
-                              : 'border-slate-300 bg-white text-transparent opacity-0 group-hover:opacity-100 focus-visible:opacity-100 dark:border-slate-600 dark:bg-slate-900'
+                              ? 'border-line-strong bg-surface-canvas text-transparent opacity-100'
+                              : 'border-line-strong bg-surface-canvas text-transparent opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
                         }`}
                       >
                         <CheckIcon aria-hidden="true" className="h-3.5 w-3.5" />
@@ -321,18 +321,18 @@ export function DriveItems({
                       href={driveHref(item.id, '', 1, view)}
                       prefetch={false}
                       onClick={(event) => event.stopPropagation()}
-                      className="inline-block max-w-full truncate rounded-sm align-top text-sm font-semibold text-slate-900 hover:text-primary-700 hover:underline dark:text-slate-100 dark:hover:text-primary-300"
+                      className="inline-block max-w-full truncate rounded-sm align-top text-sm font-semibold text-ink hover:text-accent-text hover:underline"
                       title={item.name}
                     >
                       {item.name}
                     </Link>
-                    <p className="mt-0.5 truncate whitespace-nowrap text-xs text-slate-600 dark:text-slate-400">
+                    <p className="mt-0.5 truncate whitespace-nowrap text-xs text-ink-muted">
                       <time dateTime={item.updatedAt}>{dateFormat.format(new Date(item.updatedAt))}</time>
                     </p>
                   </div>
                 </div>
                 {canManage && (
-                  <div className="flex items-center justify-end border-t border-slate-100 pt-1.5 dark:border-slate-800/80">
+                  <div className="flex items-center justify-end border-t border-line pt-1.5">
                     {actionButtons(item, item.name)}
                   </div>
                 )}
@@ -351,8 +351,8 @@ export function DriveItems({
               onContextMenu={(event) => onContextMenu?.(item, event)}
               className={`panel group relative flex min-w-0 flex-col overflow-hidden transition-all ${
                 isSelected
-                  ? 'border-primary-600 bg-primary-50/70 ring-1 ring-primary-600 dark:border-primary-400 dark:bg-primary-950/40 dark:ring-primary-400'
-                  : 'hover:border-slate-300 hover:shadow-md dark:hover:border-slate-700'
+                  ? 'border-accent bg-surface-selected ring-1 ring-accent'
+                  : 'hover:border-line-strong hover:shadow-md'
               }`}
             >
               <div
@@ -362,7 +362,7 @@ export function DriveItems({
                     onPreview(item);
                   }
                 }}
-                className={`relative flex h-28 items-center justify-center border-b border-slate-200 bg-gradient-to-br dark:border-slate-800 ${icon.tint} ${onPreview ? 'cursor-pointer' : ''}`}
+                className={`relative flex h-28 items-center justify-center border-b border-line bg-surface-subtle bg-gradient-to-br ${icon.tint} ${onPreview ? 'cursor-pointer' : ''}`}
               >
                 {onToggleCheck && (
                   <button
@@ -372,10 +372,10 @@ export function DriveItems({
                     onClick={(event) => { event.stopPropagation(); onToggleCheck(item); }}
                     className={`ux-hover-reveal absolute left-2.5 top-2.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-md border shadow-sm transition-opacity ${
                       isSelected
-                        ? 'border-primary-600 bg-primary-600 text-white opacity-100'
+                        ? 'border-accent bg-accent text-white opacity-100'
                         : hasAnySelection
-                          ? 'border-slate-300 bg-white text-transparent opacity-100 dark:border-slate-600 dark:bg-slate-900'
-                          : 'border-slate-300 bg-white text-transparent opacity-0 group-hover:opacity-100 focus-visible:opacity-100 dark:border-slate-600 dark:bg-slate-900'
+                          ? 'border-line-strong bg-surface-canvas text-transparent opacity-100'
+                          : 'border-line-strong bg-surface-canvas text-transparent opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
                     }`}
                   >
                     <CheckIcon aria-hidden="true" className="h-3.5 w-3.5" />
@@ -395,17 +395,17 @@ export function DriveItems({
                     href={fileHref(item.id)}
                     prefetch={false}
                     onClick={(event) => event.stopPropagation()}
-                    className="line-clamp-2 break-words rounded-sm text-sm font-semibold text-primary-700 hover:underline dark:text-primary-300"
+                    className="line-clamp-2 break-words rounded-sm text-sm font-semibold text-accent-text hover:underline"
                     title={item.originalName}
                   >
                     {item.originalName}
                   </Link>
-                  <p className="mt-1 truncate whitespace-nowrap text-xs tabular-nums text-slate-600 dark:text-slate-400">
+                  <p className="mt-1 truncate whitespace-nowrap text-xs tabular-nums text-ink-muted">
                     {readableSize(item.size, locale)} · <time dateTime={item.updatedAt}>{dateFormat.format(new Date(item.updatedAt))}</time>
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-end border-t border-slate-100 bg-slate-50/60 px-2 py-1 dark:border-slate-800/80 dark:bg-slate-800/30">
+              <div className="flex items-center justify-end border-t border-line bg-surface-subtle/60 px-2 py-1">
                 {actionButtons(item, item.originalName)}
               </div>
             </li>

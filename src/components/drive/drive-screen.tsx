@@ -440,23 +440,23 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
                     href={homeHref}
                     prefetch={false}
                     aria-current={folder === 'root' ? 'page' : undefined}
-                    className="flex min-h-10 items-center gap-1.5 rounded-lg px-2 py-1 text-base font-semibold hover:bg-slate-100 hover:text-primary-700 dark:hover:bg-slate-800 dark:hover:text-primary-300 sm:text-lg"
+                    className="flex min-h-10 items-center gap-1.5 rounded-lg px-2 py-1 text-base font-semibold text-ink hover:bg-surface-hover hover:text-accent-text sm:text-lg"
                   >
-                    <HomeIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+                    <HomeIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-ink-muted" />
                     {text.myDrive}
                   </Link>
                 </li>
               )}
               {data?.data.breadcrumbs.map((crumb, index) => (
                 <li key={crumb.id} className="flex min-w-0 items-center gap-1">
-                  {(!sharedView || index > 0) && <ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-500" />}
+                  {(!sharedView || index > 0) && <ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-ink-muted" />}
                   {crumb.id === folder ? (
-                    <span aria-current="page" title={crumb.name} className="max-w-[11rem] truncate px-1 sm:max-w-sm">{crumb.name}</span>
+                    <span aria-current="page" title={crumb.name} className="max-w-[11rem] truncate px-1 text-ink sm:max-w-sm">{crumb.name}</span>
                   ) : (
                     <Link
                       href={driveHref(crumb.id, '', 1, view)}
                       prefetch={false}
-                      className="max-w-[11rem] truncate rounded-lg px-2 py-1.5 hover:bg-slate-100 hover:text-primary-700 dark:hover:bg-slate-800 dark:hover:text-primary-300 sm:max-w-sm"
+                      className="max-w-[11rem] truncate rounded-lg px-2 py-1.5 text-ink-secondary hover:bg-surface-hover hover:text-ink sm:max-w-sm"
                       title={crumb.name}
                     >
                       {crumb.name}
@@ -467,26 +467,26 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
             </ol>
           </nav>
 
-          <div role="group" aria-label={text.display} className="flex shrink-0 rounded-lg border border-slate-200 bg-slate-100 p-0.5 dark:border-slate-800 dark:bg-slate-800">
+          <div role="group" aria-label={text.display} className="flex shrink-0 rounded-lg border border-line bg-surface-subtle p-0.5">
             <button
               type="button"
               aria-label={text.grid}
               title={`${text.grid} (V)`}
               aria-pressed={view === 'grid'}
-              className={`icon-button h-9 w-9 ${view === 'grid' ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : ''}`}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${view === 'grid' ? 'bg-surface-canvas text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
               onClick={() => window.history.replaceState(null, '', driveHref(folder, search, page, 'grid'))}
             >
-              <Squares2X2Icon className="h-5 w-5" />
+              <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               type="button"
               aria-label={text.list}
               title={`${text.list} (V)`}
               aria-pressed={view === 'list'}
-              className={`icon-button h-9 w-9 ${view === 'list' ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : ''}`}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${view === 'list' ? 'bg-surface-canvas text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
               onClick={() => window.history.replaceState(null, '', driveHref(folder, search, page, 'list'))}
             >
-              <ListBulletIcon className="h-5 w-5" />
+              <ListBulletIcon className="h-4 w-4" />
             </button>
           </div>
         </div>

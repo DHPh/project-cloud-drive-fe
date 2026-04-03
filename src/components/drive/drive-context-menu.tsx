@@ -84,14 +84,14 @@ export function DriveContextMenu({
   const left = Math.max(8, Math.min(state.x, window.innerWidth - menuWidth - 8));
   const top = Math.max(8, Math.min(state.y, window.innerHeight - approxHeight - 8));
 
-  const itemClass = 'flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800';
+  const itemClass = 'flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-surface-hover';
 
   return createPortal(
     <div
       ref={menuRef}
       role="menu"
       style={{ left, top, width: menuWidth }}
-      className="ux-popover-enter fixed z-[80] rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+      className="ux-popover-enter fixed z-[80] rounded-xl border border-line bg-surface-elevated p-1.5 shadow-2xl"
     >
       {state.kind === 'item' ? (
         <>

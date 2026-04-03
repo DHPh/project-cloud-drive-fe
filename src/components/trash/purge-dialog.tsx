@@ -74,9 +74,9 @@ export function PurgeDialog({ intent, suspended, onDismiss, onExpired, onAccepte
     >
       <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
         {intent.kind === 'single' && <p className="[overflow-wrap:anywhere] text-sm font-medium">{intent.item.kind === 'folder' ? intent.item.name : intent.item.originalName}</p>}
-        {error && <p data-testid="trash-purge-error" role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
+        {error && <p data-testid="trash-purge-error" role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
       </div>
-      <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-gray-200 px-5 py-4 sm:px-6">
+      <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-line px-5 py-4 sm:px-6">
         <button type="button" ref={cancel} data-testid="trash-purge-cancel" className="button button-secondary min-h-11" onClick={dismiss} disabled={pending}>{text.cancel}</button>
         <button type="button" data-testid="trash-purge-confirm" className="button button-danger min-h-11 aria-disabled:cursor-not-allowed aria-disabled:opacity-60" onClick={() => void confirm()} aria-disabled={pending || changed} aria-busy={pending}>
           {pending ? text.submittingPurge : title}

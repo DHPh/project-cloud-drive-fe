@@ -75,8 +75,8 @@ export function OutgoingSharesScreen({ initialUser }: { initialUser: User }) {
     <>
       <DriveLayout user={user} section="outgoing" signingOut={signingOut} signOutError={signOutError} onSignOut={() => void signOut()}>
         <div className="mx-auto max-w-screen-2xl space-y-5 p-4 sm:p-6 lg:p-8">
-          <h1 ref={heading} tabIndex={-1} id="outgoing-heading" className="flex w-fit items-center gap-2 rounded-md px-1 py-1 text-lg font-semibold text-gray-900">
-            <ShareIcon aria-hidden="true" className="h-6 w-6 shrink-0 text-gray-600" />{text.sharedByMe}
+          <h1 ref={heading} tabIndex={-1} id="outgoing-heading" className="flex w-fit items-center gap-2 rounded-md px-1 py-1 text-lg font-semibold text-ink">
+            <ShareIcon aria-hidden="true" className="h-6 w-6 shrink-0 text-ink-muted" />{text.sharedByMe}
           </h1>
           <div className="panel flex flex-wrap items-end gap-3 p-3 sm:p-4">
             <label className="min-w-0 space-y-1 text-sm font-medium">{text.filterType}
@@ -90,29 +90,29 @@ export function OutgoingSharesScreen({ initialUser }: { initialUser: User }) {
               </select>
             </label>
           </div>
-          <p role="status" data-testid="outgoing-notice" className={notice ? 'rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900' : 'sr-only'}>{notice}</p>
-          {(query.isPending || shouldMovePage) && !expired && <p role="status" data-testid="outgoing-loading" className="panel p-4 text-sm text-gray-600">{text.loading}</p>}
+          <p role="status" data-testid="outgoing-notice" className={notice ? 'rounded-lg bg-success-soft px-3 py-2 text-sm text-success' : 'sr-only'}>{notice}</p>
+          {(query.isPending || shouldMovePage) && !expired && <p role="status" data-testid="outgoing-loading" className="panel p-4 text-sm text-ink-secondary">{text.loading}</p>}
           {problem && !expired && (
-            <div role="alert" data-testid="outgoing-error" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+            <div role="alert" data-testid="outgoing-error" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-danger-soft p-3 text-sm text-danger dark:border-red-900">
               <p>{localizedError(problem, text)}</p><button type="button" data-testid="outgoing-retry" className="button button-secondary min-h-11" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>
             </div>
           )}
-          {items?.length === 0 && <p data-testid="outgoing-empty" role="status" className="panel p-4 text-sm text-gray-600">{text.noOutgoingShares}</p>}
+          {items?.length === 0 && <p data-testid="outgoing-empty" role="status" className="panel p-4 text-sm text-ink-secondary">{text.noOutgoingShares}</p>}
           {items && items.length > 0 && (
             <ul className="space-y-2" aria-label={text.sharedByMe} aria-busy={query.isFetching}>
               {items.map((row) => (
                 <li key={`${row.kind}-${row.resourceId}-${row.grant.recipientId}`} data-testid="outgoing-row" data-kind={row.kind} data-resource-id={row.resourceId} data-recipient-id={row.grant.recipientId} data-grant-status={row.grant.isActive ? 'active' : 'expired'}
                   className="panel space-y-2 p-3 sm:flex sm:items-start sm:justify-between sm:gap-3 sm:space-y-0 sm:p-4">
                   <div className="min-w-0 flex-1">
-                    <Link data-testid="outgoing-item-link" href={itemHref(row)} prefetch={false} className="inline-block rounded-sm text-sm font-semibold text-primary-800 hover:underline [overflow-wrap:anywhere]">{row.resourceName}</Link>
-                    <p className="mt-1 text-sm text-gray-700 [overflow-wrap:anywhere]">{row.kind === 'folder' ? text.folder : text.files} · {row.grant.recipientName} ({row.grant.recipientEmail})</p>
-                    <p className="mt-1 text-sm text-gray-700">{text.expiresAt} <time data-testid="outgoing-expiry" dateTime={row.grant.expiresAt}>{timeFormat.format(new Date(row.grant.expiresAt))}</time> ({text.vietnamTime})</p>
-                    <p data-testid="outgoing-access" className="mt-1 text-sm text-gray-700">{row.grant.access === 'editor' ? text.editingAccess : text.readOnly}</p>
-                    <p className={`mt-2 w-fit rounded-full px-2 py-1 text-xs ${row.grant.isActive ? 'bg-emerald-50 text-emerald-900' : 'bg-gray-100 text-gray-700'}`}>{row.grant.isActive ? text.shareActive : text.shareExpired}</p>
+                    <Link data-testid="outgoing-item-link" href={itemHref(row)} prefetch={false} className="inline-block rounded-sm text-sm font-semibold text-accent-text hover:underline [overflow-wrap:anywhere]">{row.resourceName}</Link>
+                    <p className="mt-1 text-sm text-ink-secondary [overflow-wrap:anywhere]">{row.kind === 'folder' ? text.folder : text.files} · {row.grant.recipientName} ({row.grant.recipientEmail})</p>
+                    <p className="mt-1 text-sm text-ink-secondary">{text.expiresAt} <time data-testid="outgoing-expiry" dateTime={row.grant.expiresAt}>{timeFormat.format(new Date(row.grant.expiresAt))}</time> ({text.vietnamTime})</p>
+                    <p data-testid="outgoing-access" className="mt-1 text-sm text-ink-secondary">{row.grant.access === 'editor' ? text.editingAccess : text.readOnly}</p>
+                    <p className={`mt-2 w-fit rounded-full px-2 py-1 text-xs font-medium ${row.grant.isActive ? 'bg-success-soft text-success' : 'bg-surface-subtle text-ink-secondary'}`}>{row.grant.isActive ? text.shareActive : text.shareExpired}</p>
                   </div>
                   <div className="flex flex-wrap gap-2 sm:max-w-[50%] sm:justify-end">
                     <button type="button" data-testid="outgoing-renew" className="button button-secondary min-h-11" onClick={(event) => openAction('renew', row, event.currentTarget)}>{text.renewShare}</button>
-                    <button type="button" data-testid="outgoing-revoke" className="button button-secondary min-h-11 text-red-800" onClick={(event) => openAction('revoke', row, event.currentTarget)}>{text.shareRevoke}</button>
+                    <button type="button" data-testid="outgoing-revoke" className="button button-secondary min-h-11 text-danger" onClick={(event) => openAction('revoke', row, event.currentTarget)}>{text.shareRevoke}</button>
                     <button type="button" data-testid="outgoing-copy" className="button button-secondary min-h-11" onClick={(event) => void copyRow(row, event.currentTarget)}>{text.shareCopy}</button>
                     <button type="button" data-testid="outgoing-qr" className="button button-secondary min-h-11" onClick={(event) => openAction('qr', row, event.currentTarget)}>{text.shareQr}</button>
                   </div>
@@ -121,7 +121,7 @@ export function OutgoingSharesScreen({ initialUser }: { initialUser: User }) {
             </ul>
           )}
           {data && !error && !expired && !shouldMovePage && latestPage > 1 && (
-            <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-4 text-sm">
+            <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4 text-sm">
               <p>{text.page} {filters.page} / {latestPage}</p>
               <div className="flex gap-2">
                 {filters.page > 1 && <Link data-testid="outgoing-prev" href={outgoingSharesHref({ ...filters, page: filters.page - 1 })} prefetch={false} aria-label={text.previousPage} className="icon-button"><ChevronLeftIcon aria-hidden="true" className="h-5 w-5" /></Link>}

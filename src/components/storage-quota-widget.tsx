@@ -27,26 +27,26 @@ export function StorageQuotaWidget({ userId }: { userId: string }) {
   return (
     <section
       aria-label={text.accountStorage}
-      className="mt-4 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+      className="mt-4 rounded-[10px] border border-line bg-surface-canvas p-3 shadow-sm"
     >
       <div className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold">
-        <span className="text-slate-700 dark:text-slate-200">{text.storageUsed}</span>
-        <span className="tabular-nums text-primary-700 dark:text-primary-300">{totalPct}%</span>
+        <span className="text-ink">{text.storageUsed}</span>
+        <span className="tabular-nums text-accent-text">{totalPct}%</span>
       </div>
-      <div className="mb-2 flex h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-        <div className="h-full bg-primary-600 transition-all" style={{ width: `${activePct.toFixed(1)}%` }} />
+      <div className="mb-2 flex h-1.5 w-full overflow-hidden rounded-full bg-surface-subtle">
+        <div className="h-full bg-accent transition-all" style={{ width: `${activePct.toFixed(1)}%` }} />
         {trashedBytes > 0 && (
-          <div className="h-full bg-amber-500 transition-all" style={{ width: `${trashPct.toFixed(1)}%` }} />
+          <div className="h-full bg-warning transition-all" style={{ width: `${trashPct.toFixed(1)}%` }} />
         )}
       </div>
-      <p className="text-xs tabular-nums text-slate-600 dark:text-slate-400">
+      <p className="text-[11.5px] tabular-nums text-ink-muted">
         {readableSize(storage.usedBytes, locale)} / {readableSize(storage.quotaBytes, locale)}
       </p>
       {trashedBytes > 0 ? (
         <Link
           href="/trash"
           prefetch={false}
-          className="mt-1.5 inline-block text-xs font-medium text-primary-700 hover:underline dark:text-primary-300"
+          className="mt-1.5 inline-block text-[11.5px] font-semibold text-accent-text hover:underline"
         >
           {text.trash}: {readableSize(trashedBytes, locale)} →
         </Link>
@@ -54,7 +54,7 @@ export function StorageQuotaWidget({ userId }: { userId: string }) {
         <Link
           href="/account"
           prefetch={false}
-          className="mt-1.5 inline-block text-xs font-medium text-primary-700 hover:underline dark:text-primary-300"
+          className="mt-1.5 inline-block text-[11.5px] font-semibold text-accent-text hover:underline"
         >
           {text.accountStorage} →
         </Link>

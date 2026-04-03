@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentIcon, EyeIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentIcon, EyeIcon, GlobeAltIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { type ReactNode, useRef, useState } from 'react';
@@ -12,7 +12,7 @@ import { localizedError } from '@/lib/messages';
 import { BrandIcon } from '../brand';
 import { LanguageSwitch } from '../language-switch';
 import { Overlay } from '../overlay';
-import { useLocale } from '../providers';
+import { useLocale, useTheme } from '../providers';
 import { BoardPagination } from './board-pagination';
 
 const copy = {
@@ -44,20 +44,31 @@ const copy = {
 
 function PublicBoardLayout({ explore, children }: { explore?: boolean; children: ReactNode }) {
   const { locale, text } = useLocale();
+  const { theme, toggleTheme } = useTheme();
+  const vi = locale === 'vi';
   return (
-    <div className="safe-top safe-bottom min-h-dvh bg-slate-50 dark:bg-slate-950">
-      <a href="#public-board-main" className="sr-only z-40 focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:rounded-md focus:bg-white focus:p-3 focus:text-slate-900">{text.skip}</a>
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto flex min-h-16 max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:gap-4 sm:px-6">
+    <div className="safe-top safe-bottom min-h-dvh bg-surface-rail text-ink">
+      <a href="#public-board-main" className="sr-only z-40 focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:rounded-md focus:bg-surface-elevated focus:p-3 focus:text-ink">{text.skip}</a>
+      <header className="border-b border-line bg-surface-canvas">
+        <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:gap-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2">
             <BrandIcon />
-            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 sm:text-base">Cloud Drive</span>
+            <span className="text-sm font-bold tracking-tight text-ink sm:text-base">Cloud Drive</span>
           </div>
-          <div className="flex flex-wrap items-center gap-1 sm:gap-3">
-            <nav aria-label={text.navigation} className="flex">
-              <Link href="/explore" prefetch={false} aria-current={explore ? 'page' : undefined} className={`button min-h-11 px-2 sm:px-3 ${explore ? 'bg-primary-100 text-primary-900 dark:bg-primary-500/20 dark:text-primary-200' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>{copy[locale].explore}</Link>
-              <Link href="/drive" prefetch={false} className="button min-h-11 px-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:px-3">{text.myDrive}</Link>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5">
+            <nav aria-label={text.navigation} className="flex gap-1">
+              <Link href="/explore" prefetch={false} aria-current={explore ? 'page' : undefined} className={`button min-h-10 px-2.5 sm:px-3 ${explore ? 'bg-accent-soft text-accent-text' : 'text-ink-secondary hover:bg-surface-hover hover:text-ink'}`}>{copy[locale].explore}</Link>
+              <Link href="/drive" prefetch={false} className="button min-h-10 px-2.5 text-ink-secondary hover:bg-surface-hover hover:text-ink sm:px-3">{text.myDrive}</Link>
             </nav>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="icon-button"
+              aria-label={theme === 'dark' ? (vi ? 'Chuyển giao diện sáng' : 'Switch to light mode') : (vi ? 'Chuyển giao diện tối' : 'Switch to dark mode')}
+              title={theme === 'dark' ? (vi ? 'Giao diện sáng' : 'Light mode') : (vi ? 'Giao diện tối' : 'Dark mode')}
+            >
+              {theme === 'dark' ? <SunIcon className="h-[18px] w-[18px]" /> : <MoonIcon className="h-[18px] w-[18px]" />}
+            </button>
             <LanguageSwitch />
           </div>
         </div>
@@ -81,27 +92,27 @@ export function ExploreBoardsScreen({ page }: { page: number }) {
 
   return (
     <PublicBoardLayout explore>
-      <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
-        <GlobeAltIcon aria-hidden="true" className="h-6 w-6 text-primary-800" />{labels.explore}
+      <h1 className="flex items-center gap-2 text-xl font-semibold text-ink">
+        <GlobeAltIcon aria-hidden="true" className="h-6 w-6 text-accent-text" />{labels.explore}
       </h1>
-      {checking && <p role="status" className="panel p-4 text-sm text-gray-600">{text.loading}</p>}
+      {checking && <p role="status" className="panel p-4 text-sm text-ink-secondary">{text.loading}</p>}
       {query.error && (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-danger-soft p-4 text-sm text-danger dark:border-red-900">
           <p>{localizedError(query.error, text)}</p>
           <button type="button" className="button button-secondary min-h-11" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>
         </div>
       )}
-      {data?.data.items.length === 0 && <p data-testid="public-boards-empty" className="panel p-4 text-sm text-gray-600">{labels.emptyExplore}</p>}
+      {data?.data.items.length === 0 && <p data-testid="public-boards-empty" className="panel p-4 text-sm text-ink-secondary">{labels.emptyExplore}</p>}
       {data && data.data.items.length > 0 && (
         <ul aria-label={labels.explore} aria-busy={query.isFetching} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data.data.items.map((board) => (
-            <li key={board.publicId} data-testid="public-board-card" data-public-id={board.publicId} className="panel min-w-0 p-4">
-              <h2 className="font-semibold text-gray-900 [overflow-wrap:anywhere]">
-                <Link href={`/public/boards/${encodeURIComponent(board.publicId)}`} prefetch={false} className="flex min-h-11 items-center justify-between gap-3 rounded-md text-primary-800 hover:underline">
+            <li key={board.publicId} data-testid="public-board-card" data-public-id={board.publicId} className="panel min-w-0 p-4 transition-colors hover:border-line-strong">
+              <h2 className="font-semibold text-ink [overflow-wrap:anywhere]">
+                <Link href={`/public/boards/${encodeURIComponent(board.publicId)}`} prefetch={false} className="flex min-h-11 items-center justify-between gap-3 rounded-md text-accent-text hover:underline">
                   <span>{board.title}</span><ArrowRightIcon aria-hidden="true" className="h-5 w-5 shrink-0" />
                 </Link>
               </h2>
-              {board.description && <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-sm text-gray-600 [overflow-wrap:anywhere]">{board.description}</p>}
+              {board.description && <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-sm text-ink-secondary [overflow-wrap:anywhere]">{board.description}</p>}
             </li>
           ))}
         </ul>

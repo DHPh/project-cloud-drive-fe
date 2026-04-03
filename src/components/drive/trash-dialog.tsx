@@ -65,9 +65,9 @@ export function TrashDialog({ item, trigger, suspended, onDismiss, onExpired, on
     >
       <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
         <p className="[overflow-wrap:anywhere] text-sm font-medium">{item.kind === 'folder' ? item.name : item.originalName}</p>
-        {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
+        {error && <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
       </div>
-      <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-gray-200 px-5 py-4 sm:px-6">
+      <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-line px-5 py-4 sm:px-6">
         <button type="button" ref={cancel} data-testid="trash-cancel" className="button button-secondary" onClick={dismiss} disabled={pending}>{text.cancel}</button>
         <button type="button" data-testid="trash-confirm" className="button button-danger aria-disabled:cursor-not-allowed aria-disabled:opacity-60" onClick={() => void submit()} aria-disabled={pending} aria-busy={pending}>
           {pending ? text.movingToTrash : title}

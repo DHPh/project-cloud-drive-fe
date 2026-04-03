@@ -138,10 +138,10 @@ export function ItemNameDialog<T>({
                 value={descriptionText} readOnly={pending} onChange={(event) => { setDescriptionText(event.currentTarget.value); setError(null); }} />
             </div>
           )}
-          {error && <p id={errorId} data-testid={errorTestId} role="alert" className="text-sm text-red-800">{error}</p>}
-          {confirmLeave && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">{discardMessage}</p>}
+          {error && <p id={errorId} data-testid={errorTestId} role="alert" className="text-sm text-danger">{error}</p>}
+          {confirmLeave && <p role="alert" className="rounded-lg bg-warning-soft p-3 text-sm text-warning">{discardMessage}</p>}
         </div>
-        <div className="flex flex-wrap justify-end gap-2 border-t border-gray-200 px-5 py-4 sm:px-6">
+        <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4 sm:px-6">
           {confirmLeave ? (
             <>
               <button type="button" className="button button-secondary" onClick={() => { setConfirmLeave(false); initialFocus.current?.focus(); }}>{text.keepEditing}</button>

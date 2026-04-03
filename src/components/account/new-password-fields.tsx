@@ -18,7 +18,7 @@ export function NewPasswordFields({ disabled }: { disabled: boolean }) {
       <label className="block space-y-1 text-sm font-medium">{text.newPassword}
         <input data-testid="new-password" name="password" type="password" autoComplete="new-password" className="field" disabled={disabled} aria-describedby={`${id}-requirements`} required maxLength={2048} />
       </label>
-      <p id={`${id}-requirements`} className="text-xs text-gray-600">{text.passwordRequirements}</p>
+      <p id={`${id}-requirements`} className="text-xs text-ink-muted">{text.passwordRequirements}</p>
       <label className="block space-y-1 text-sm font-medium">{text.confirmPassword}
         <input data-testid="confirm-password" name="confirmPassword" type="password" autoComplete="new-password" className="field" disabled={disabled} required maxLength={2048} />
       </label>

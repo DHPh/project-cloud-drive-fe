@@ -87,32 +87,32 @@ export function BoardModerationScreen({ initialUser, page }: { initialUser: User
     <>
       <DriveLayout user={user} section="admin" signingOut={signingOut} signOutError={signOutError} onSignOut={() => void signOut()}>
         <div className="mx-auto max-w-screen-lg space-y-4 p-4 sm:p-6 lg:p-8">
-          <Link href="/admin" prefetch={false} className="button min-h-11 px-2 text-primary-800 hover:bg-primary-50">
+          <Link href="/admin" prefetch={false} className="button min-h-11 px-2 text-accent-text hover:bg-accent-soft">
             <ArrowLeftIcon aria-hidden="true" className="h-4 w-4" />{labels.back}
           </Link>
-          <h1 ref={heading} tabIndex={-1} className="flex w-fit items-center gap-2 rounded-sm text-xl font-semibold">
-            <ShieldCheckIcon aria-hidden="true" className="h-6 w-6 shrink-0 text-gray-600" />{labels.title}
+          <h1 ref={heading} tabIndex={-1} className="flex w-fit items-center gap-2 rounded-sm text-xl font-semibold text-ink">
+            <ShieldCheckIcon aria-hidden="true" className="h-6 w-6 shrink-0 text-ink-muted" />{labels.title}
           </h1>
-          <p role="status" data-testid="moderation-board-status" className={notice ? 'rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900' : 'sr-only'}>{notice ? labels.hiddenNotice : ''}</p>
-          {canModerate && checking && <p role="status" className="panel p-4 text-sm text-gray-600">{text.loading}</p>}
+          <p role="status" data-testid="moderation-board-status" className={notice ? 'rounded-lg bg-success-soft px-3 py-2 text-sm text-success' : 'sr-only'}>{notice ? labels.hiddenNotice : ''}</p>
+          {canModerate && checking && <p role="status" className="panel p-4 text-sm text-ink-secondary">{text.loading}</p>}
           {canModerate && requestError && (
-            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-danger-soft p-4 text-sm text-danger dark:border-red-900">
               <p>{localizedError(requestError, text)}</p>
               {!forbidden && <button type="button" className="button button-secondary min-h-11" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>}
             </div>
           )}
-          {data?.data.items.length === 0 && <p className="panel p-4 text-sm text-gray-600">{labels.empty}</p>}
+          {data?.data.items.length === 0 && <p className="panel p-4 text-sm text-ink-secondary">{labels.empty}</p>}
           {data && data.data.items.length > 0 && (
             <ul aria-label={labels.title} aria-busy={query.isFetching} className="space-y-2">
               {data.data.items.map((board) => (
                 <li key={board.id} data-testid="moderation-board-row" data-board-id={board.id} className="panel flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4">
                   <div className="min-w-0 flex-[1_1_14rem] [overflow-wrap:anywhere]">
-                    <h2 className="font-semibold text-gray-900">
-                      {board.hiddenAt ? board.title : <Link href={`/public/boards/${encodeURIComponent(board.publicId)}`} prefetch={false} className="inline-flex min-h-11 items-center py-2 text-primary-800 hover:underline">{board.title}</Link>}
+                    <h2 className="font-semibold text-ink">
+                      {board.hiddenAt ? board.title : <Link href={`/public/boards/${encodeURIComponent(board.publicId)}`} prefetch={false} className="inline-flex min-h-11 items-center py-2 text-accent-text hover:underline">{board.title}</Link>}
                     </h2>
                     {board.hiddenAt ? (
-                      <p className="mt-1 text-sm text-gray-700">{labels.hidden} · <time dateTime={board.hiddenAt}>{dateFormat.format(new Date(board.hiddenAt))}</time></p>
-                    ) : <p className="text-sm text-gray-700">{labels.visibility[board.visibility]}</p>}
+                      <p className="mt-1 text-sm text-ink-secondary">{labels.hidden} · <time dateTime={board.hiddenAt}>{dateFormat.format(new Date(board.hiddenAt))}</time></p>
+                    ) : <p className="text-sm text-ink-secondary">{labels.visibility[board.visibility]}</p>}
                   </div>
                   {!board.hiddenAt && (
                     <button type="button" data-testid="moderation-board-hide" className="button button-secondary min-h-11" aria-label={`${labels.hide}: ${board.title}`} onClick={(event) => {
@@ -180,9 +180,9 @@ function HideBoardDialog({ target, onDismiss, onHidden, onSessionExpired, restor
       onDismiss={pending ? undefined : onDismiss} restoreFocus={target.trigger} restoreFallback={restoreFallback}>
       <div className="min-h-0 space-y-3 overflow-y-auto px-5 py-4 text-sm sm:px-6">
         <p className="font-medium [overflow-wrap:anywhere]">{target.board.title}</p>
-        {error !== null && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-900">{localizedError(error, text)}</p>}
+        {error !== null && <p role="alert" className="rounded-lg bg-danger-soft p-3 text-danger">{localizedError(error, text)}</p>}
       </div>
-      <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-gray-200 px-5 py-3 sm:px-6">
+      <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-line px-5 py-3 sm:px-6">
         <button ref={cancel} type="button" data-testid="moderation-board-cancel" className="button button-secondary min-h-11" disabled={pending} onClick={onDismiss}>{text.cancel}</button>
         <button type="button" data-testid="moderation-board-confirm" className="button button-danger min-h-11" aria-disabled={pending} onClick={() => void hide()}>{pending ? text.saving : labels.hide}</button>
       </footer>

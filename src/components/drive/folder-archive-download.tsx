@@ -81,8 +81,8 @@ export function FolderArchiveDownload({ folder, onExpired }: { folder: FolderSum
         </button>
         {pending && <button type="button" data-testid="folder-zip-cancel" className="button button-secondary min-h-11" onClick={cancel}>{text.cancelZip}</button>}
       </div>
-      <p role="status" data-testid="folder-zip-status" className={status ? 'text-sm text-gray-700' : 'sr-only'}>{status}</p>
-      {error && <p role="alert" data-testid="folder-zip-error" className="max-w-md text-sm text-red-800">{error}</p>}
+      <p role="status" data-testid="folder-zip-status" className={status ? 'text-sm text-ink-secondary' : 'sr-only'}>{status}</p>
+      {error && <p role="alert" data-testid="folder-zip-error" className="max-w-md text-sm text-danger">{error}</p>}
     </div>
   );
 }

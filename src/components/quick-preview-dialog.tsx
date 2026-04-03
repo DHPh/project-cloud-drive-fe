@@ -54,16 +54,16 @@ export function QuickPreviewDialog({ files, fileId, onSelectFile, onDismiss, onE
             event.preventDefault();
             closeRef.current?.focus();
           }}
-          className="fixed inset-3 z-[75] flex flex-col overflow-hidden rounded-2xl border border-slate-700 bg-white text-slate-900 shadow-2xl focus:outline-none dark:bg-slate-900 dark:text-slate-100 sm:inset-6"
+          className="fixed inset-3 z-[75] flex flex-col overflow-hidden rounded-2xl border border-line bg-surface-elevated text-ink shadow-2xl focus:outline-none sm:inset-6"
         >
-          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-5">
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
             <div className="flex min-w-0 items-center gap-3">
               <Dialog.Title className="truncate text-sm font-semibold sm:text-base">{activeFile.originalName}</Dialog.Title>
               <Dialog.Description className="sr-only">
                 {vi ? 'Xem nhanh nội dung tệp' : 'Quick file preview'}
               </Dialog.Description>
               {files.length > 1 && (
-                <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium tabular-nums text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <span className="shrink-0 rounded-full bg-surface-subtle px-2 py-0.5 text-xs font-medium tabular-nums text-ink-secondary">
                   {currentIndex + 1} / {files.length}
                 </span>
               )}

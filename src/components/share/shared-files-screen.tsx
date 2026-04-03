@@ -92,9 +92,9 @@ export function SharedFilesScreen({ initialUser }: { initialUser: User }) {
                   <li key={item.id} data-testid={item.kind === 'folder' ? 'shared-folder' : 'shared-item'} data-item-id={item.id} className={`panel grid min-w-0 items-center gap-2 px-2 py-2.5 sm:gap-3 sm:px-3 ${item.kind === 'folder' ? 'grid-cols-[auto_minmax(0,1fr)]' : 'grid-cols-[auto_minmax(0,1fr)_auto]'}`}>
                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 ${iconMeta.classes}`}><iconMeta.Icon aria-hidden="true" className="h-5 w-5" /></span>
                     <div className="min-w-0">
-                      <Link data-testid={item.kind === 'folder' ? 'shared-folder-link' : 'shared-file-link'} href={item.kind === 'folder' ? driveHref(item.id) : fileHref(item.id)} prefetch={false} className="line-clamp-2 break-words rounded-sm text-sm font-medium text-primary-800 hover:underline dark:text-primary-300" title={name}>{name}</Link>
-                      <p className="mt-0.5 break-words text-xs text-gray-600">{item.kind === 'folder' ? text.sharedFolderBy : text.sharedBy} <span className="font-medium">{item.ownerName}</span>{item.kind === 'file' && <> <span aria-hidden="true">·</span> {readableSize(item.size, locale)}</>}</p>
-                      <p className="mt-0.5 text-xs text-gray-600">{text.expiresAt} <time dateTime={item.expiresAt}>{dateFormat.format(new Date(item.expiresAt))}</time> ({text.vietnamTime})</p>
+                      <Link data-testid={item.kind === 'folder' ? 'shared-folder-link' : 'shared-file-link'} href={item.kind === 'folder' ? driveHref(item.id) : fileHref(item.id)} prefetch={false} className="line-clamp-2 break-words rounded-sm text-sm font-medium text-accent-text hover:underline" title={name}>{name}</Link>
+                      <p className="mt-0.5 break-words text-xs text-ink-secondary">{item.kind === 'folder' ? text.sharedFolderBy : text.sharedBy} <span className="font-medium">{item.ownerName}</span>{item.kind === 'file' && <> <span aria-hidden="true">·</span> {readableSize(item.size, locale)}</>}</p>
+                      <p className="mt-0.5 text-xs text-ink-muted">{text.expiresAt} <time dateTime={item.expiresAt}>{dateFormat.format(new Date(item.expiresAt))}</time> ({text.vietnamTime})</p>
                     </div>
                     {item.kind === 'file' && <a data-testid="shared-file-download" href={downloadUrl(item.id)} download={name} className="icon-button h-11 w-11" aria-label={`${text.download}: ${name}`} title={text.download}><ArrowDownTrayIcon aria-hidden="true" className="h-5 w-5" /></a>}
                   </li>
@@ -103,8 +103,8 @@ export function SharedFilesScreen({ initialUser }: { initialUser: User }) {
             </ul>
           )}
           {data && totalPages > 1 && !shouldMovePage && !requestError && !expired && !checkingAccess && (
-            <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-4 text-sm">
-              <p className="text-gray-600">{text.page} {page} / {totalPages} · {new Intl.NumberFormat(locale).format(data.pagination.total)} {text.items}</p>
+            <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4 text-sm">
+              <p className="text-ink-secondary">{text.page} {page} / {totalPages} · {new Intl.NumberFormat(locale).format(data.pagination.total)} {text.items}</p>
               <div className="flex gap-1">
                 {page > 1 && <Link data-testid="shared-pagination-prev" href={sharedHref(page - 1, tab)} prefetch={false} aria-label={text.previousPage} className="icon-button"><ChevronLeftIcon aria-hidden="true" className="h-5 w-5" /></Link>}
                 {page < totalPages && <Link data-testid="shared-pagination-next" href={sharedHref(page + 1, tab)} prefetch={false} aria-label={text.nextPage} className="icon-button"><ChevronRightIcon aria-hidden="true" className="h-5 w-5" /></Link>}

@@ -77,25 +77,25 @@ export function AccountLinkScreen({ kind }: { kind: 'invite' | 'reset' }) {
 
   const title = kind === 'invite' ? text.inviteAccount : text.resetAccountPassword;
   return (
-    <main className="safe-top safe-bottom relative flex min-h-dvh items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4 py-20 sm:px-6">
+    <main className="safe-top safe-bottom relative flex min-h-dvh items-center justify-center bg-surface-rail px-4 py-20 text-ink sm:px-6">
       <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+1rem)]"><LanguageSwitch /></div>
       <div className="w-full max-w-md space-y-5">
-        <div className="space-y-3 text-center"><BrandIcon large /><h1 className="text-xl font-bold">{title}</h1></div>
+        <div className="space-y-3 text-center"><BrandIcon large /><h1 className="text-xl font-bold text-ink">{title}</h1></div>
         <div className="panel space-y-4 p-5 sm:p-7">
-          {completed ? <p role="status" data-testid="account-link-complete" className="text-sm text-emerald-800">{kind === 'invite' ? text.inviteCompleted : text.resetCompleted}</p>
-            : closed ? <p data-testid="account-link-error" role="alert" className="text-sm text-red-800">{error}</p>
-              : token === null ? <p role="status" className="text-sm text-gray-600">{text.loading}</p>
+          {completed ? <p role="status" data-testid="account-link-complete" className="text-sm text-success">{kind === 'invite' ? text.inviteCompleted : text.resetCompleted}</p>
+            : closed ? <p data-testid="account-link-error" role="alert" className="text-sm text-danger">{error}</p>
+              : token === null ? <p role="status" className="text-sm text-ink-secondary">{text.loading}</p>
               : token ? (
                 <form key={formVersion} method="post" onSubmit={(event) => void submit(event)} className="space-y-3">
                   {kind === 'invite' && <label className="block space-y-1 text-sm font-medium">{text.accountName}
                     <input data-testid="invite-name" name="name" className="field" autoComplete="name" disabled={pending || closed} maxLength={240} required />
                   </label>}
                   <NewPasswordFields disabled={pending || closed} />
-                  {error && <p data-testid="account-link-error" role="alert" className="text-sm text-red-800">{error}</p>}
+                  {error && <p data-testid="account-link-error" role="alert" className="text-sm text-danger">{error}</p>}
                   <button data-testid="account-link-submit" type="submit" className="button button-primary min-h-11" disabled={pending || closed}>{pending ? text.saving : title}</button>
                 </form>
-              ) : <p data-testid="account-link-error" role="alert" className="text-sm text-red-800">{text.accountLinkInvalid}</p>}
-          <Link href="/login" prefetch={false} className="inline-flex min-h-11 items-center rounded-md text-sm font-medium text-primary-800 hover:underline">{text.signIn}</Link>
+              ) : <p data-testid="account-link-error" role="alert" className="text-sm text-danger">{text.accountLinkInvalid}</p>}
+          <Link href="/login" prefetch={false} className="inline-flex min-h-11 items-center rounded-md text-sm font-medium text-accent-text hover:underline">{text.signIn}</Link>
         </div>
       </div>
     </main>

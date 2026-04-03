@@ -66,15 +66,15 @@ export function ShortcutsDialog({ open, onDismiss, restoreFocus }: Props) {
           {shortcuts.map(([label, keys]) => (
             <div
               key={label}
-              className="flex items-start justify-between gap-2.5 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-800/50"
+              className="flex items-start justify-between gap-2.5 rounded-lg border border-line bg-surface-subtle px-3 py-2 text-xs"
             >
-              <span className="leading-snug text-slate-700 dark:text-slate-200">{label}</span>
+              <span className="leading-snug text-ink-secondary">{label}</span>
               <kbd className="kbd-chip">{keys}</kbd>
             </div>
           ))}
         </div>
       </div>
-      <div className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-3 dark:border-slate-800 sm:px-6">
+      <div className="flex shrink-0 justify-end border-t border-line px-5 py-3 sm:px-6">
         <button ref={closeRef} type="button" className="button button-primary min-h-10" onClick={onDismiss}>
           {text.close}
         </button>

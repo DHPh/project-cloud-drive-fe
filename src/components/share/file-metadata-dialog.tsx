@@ -134,7 +134,7 @@ export function FileMetadataDialog({ file, trigger, suspended, onDismiss, onExpi
             {tags.length > 0 && (
               <ul className="flex min-w-0 flex-wrap gap-2">
                 {tags.map((tag) => (
-                  <li key={tag} data-testid="file-metadata-tag" className="flex min-w-0 max-w-full items-center gap-1 rounded-lg bg-gray-100 pl-2.5 text-sm text-gray-900">
+                  <li key={tag} data-testid="file-metadata-tag" className="flex min-w-0 max-w-full items-center gap-1 rounded-lg bg-surface-subtle pl-2.5 text-sm text-ink">
                     <span className="min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]">{tag}</span>
                     <button type="button" data-testid="file-metadata-remove-tag" aria-label={`${text.removeFileTag} ${tag}`} className="icon-button h-11 w-11" disabled={pending || discard} onClick={() => removeTag(tag)}><XMarkIcon aria-hidden="true" className="h-4 w-4" /></button>
                   </li>
@@ -153,13 +153,13 @@ export function FileMetadataDialog({ file, trigger, suspended, onDismiss, onExpi
                 }} />
               <button type="button" data-testid="file-metadata-tag-add" className="button button-secondary min-h-11" disabled={pending || discard || !pendingTag} onClick={addTag}>{text.addFileTag}</button>
             </div>
-            <p id="file-tag-limits" className="text-xs text-gray-600">{text.fileTagLimits}</p>
-            {tagError && <p id="file-tag-error" data-testid="file-metadata-tag-error" role="alert" className="text-sm text-red-800">{tagError}</p>}
+            <p id="file-tag-limits" className="text-xs text-ink-muted">{text.fileTagLimits}</p>
+            {tagError && <p id="file-tag-error" data-testid="file-metadata-tag-error" role="alert" className="text-sm text-danger">{tagError}</p>}
           </fieldset>
-          {error && <p id="file-metadata-error" data-testid="file-metadata-error" role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
-          {discard && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">{text.discardFileMetadata}</p>}
+          {error && <p id="file-metadata-error" data-testid="file-metadata-error" role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
+          {discard && <p role="alert" className="rounded-lg bg-warning-soft p-3 text-sm text-warning">{text.discardFileMetadata}</p>}
         </div>
-        <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-gray-200 px-5 py-4 sm:px-6">
+        <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-line px-5 py-4 sm:px-6">
           {discard ? (
             <>
               <button type="button" ref={stayRef} className="button button-secondary min-h-11" onClick={keepEditing}>{text.keepEditing}</button>

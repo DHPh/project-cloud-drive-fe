@@ -282,21 +282,21 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
             event.preventDefault();
             inputRef.current?.focus();
           }}
-          className="ux-popover-enter fixed inset-x-0 top-[10vh] z-[75] mx-auto flex w-[calc(100%-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+          className="ux-popover-enter fixed inset-x-0 top-[10vh] z-[75] mx-auto flex w-[calc(100%-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-line bg-surface-elevated text-ink shadow-2xl focus:outline-none"
         >
           <Dialog.Title className="sr-only">{vi ? 'Command Palette' : 'Command Palette'}</Dialog.Title>
           <Dialog.Description className="sr-only">
             {vi ? 'Tìm kiếm toàn Drive hoặc gõ > để chạy lệnh nhanh.' : 'Search Drive items or type > to run commands.'}
           </Dialog.Description>
-          <div className="flex items-center gap-2.5 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-            <MagnifyingGlassIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-400" />
+          <div className="flex items-center gap-2.5 border-b border-line px-4 py-3">
+            <MagnifyingGlassIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-ink-muted" />
             <input
               ref={inputRef}
               type="text"
               value={rawInput}
               autoComplete="off"
               placeholder={vi ? "Tìm tệp/thư mục trong Drive hoặc gõ '>' chạy lệnh…" : "Search Drive or type '>' for commands…"}
-              className="w-full bg-transparent text-base text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 sm:text-sm"
+              className="w-full bg-transparent text-base text-ink placeholder:text-ink-muted focus:outline-none sm:text-sm"
               onChange={(event) => {
                 const value = event.currentTarget.value;
                 setRawInput(value);
@@ -329,10 +329,10 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
           </div>
           <div className="max-h-[55vh] overflow-y-auto ux-scroll-contain p-2">
             {searchEnabled && searchQuery.isFetching && (
-              <p className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">{text.loading}</p>
+              <p className="px-3 py-2 text-xs text-ink-muted">{text.loading}</p>
             )}
             {entries.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">{text.noDriveSearchResults}</p>
+              <p className="px-3 py-6 text-center text-sm text-ink-muted">{text.noDriveSearchResults}</p>
             ) : (
               entries.map((entry, idx) => {
                 const showGroup = idx === 0 || entries[idx - 1]?.group !== entry.group;
@@ -340,7 +340,7 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
                 return (
                   <div key={entry.id}>
                     {showGroup && (
-                      <p className="px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                      <p className="px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
                         {entry.group}
                       </p>
                     )}
@@ -350,15 +350,15 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
                       onClick={entry.run}
                       className={`flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
                         active
-                          ? 'bg-primary-50 text-primary-800 dark:bg-primary-500/20 dark:text-primary-200'
-                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'
+                          ? 'bg-accent-soft text-accent-text'
+                          : 'text-ink-secondary hover:bg-surface-hover hover:text-ink'
                       }`}
                     >
                       <span className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${entry.iconClasses}`}>
                         <entry.Icon aria-hidden="true" className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1 break-words font-medium leading-snug">{entry.label}</span>
-                      <span className={`mt-0.5 max-w-[11rem] shrink-0 truncate text-xs ${active ? 'text-primary-700/80 dark:text-primary-300/90' : 'text-slate-500 dark:text-slate-400'}`} title={entry.hint}>
+                      <span className={`mt-0.5 max-w-[11rem] shrink-0 truncate text-xs ${active ? 'text-accent-text/90' : 'text-ink-muted'}`} title={entry.hint}>
                         {entry.hint}
                       </span>
                     </button>

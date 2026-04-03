@@ -3,17 +3,57 @@
 @tailwind utilities;
 
 :root {
-  --ux-surface: #ffffff;
-  --ux-text: #0f172a;
-  --ux-header-height: 64px;
+  --bg-rail: #f7f8fa;
+  --bg-canvas: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-subtle: #f1f3f6;
+  --bg-hover: #eef1f6;
+  --bg-selected: #eff6ff;
+  --border: #e6e8ec;
+  --border-strong: #d0d5dd;
+  --text: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #5b6370;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #eff6ff;
+  --accent-text: #1d4ed8;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --success: #047857;
+  --success-soft: #ecfdf5;
+  --warning: #b45309;
+  --warning-soft: #fffbeb;
+  --ux-surface: var(--bg-canvas);
+  --ux-text: var(--text);
+  --ux-header-height: 56px;
   --ux-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ux-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ux-duration-overlay: 180ms;
 }
 
 .dark {
-  --ux-surface: #0f172a;
-  --ux-text: #f1f5f9;
+  --bg-rail: #0e1117;
+  --bg-canvas: #151921;
+  --bg-elevated: #1c222d;
+  --bg-subtle: #1e2531;
+  --bg-hover: #242c3a;
+  --bg-selected: rgba(59, 130, 246, 0.16);
+  --border: #262e3d;
+  --border-strong: #374151;
+  --text: #f3f4f6;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(59, 130, 246, 0.16);
+  --accent-text: #93c5fd;
+  --danger: #f87171;
+  --danger-soft: rgba(239, 68, 68, 0.15);
+  --success: #34d399;
+  --success-soft: rgba(16, 185, 129, 0.15);
+  --warning: #fbbf24;
+  --warning-soft: rgba(245, 158, 11, 0.15);
 }
 
 @layer base {
@@ -23,7 +63,7 @@
   }
 
   body {
-    @apply min-h-dvh bg-slate-50 font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    @apply min-h-dvh bg-surface-rail font-sans text-ink antialiased;
   }
 
   button,
@@ -36,7 +76,7 @@
   }
 
   :focus-visible {
-    @apply outline outline-2 outline-offset-2 outline-primary-600 dark:outline-primary-400;
+    @apply outline outline-2 outline-offset-2 outline-accent;
   }
 }
 
@@ -60,15 +100,15 @@ select:-webkit-autofill {
 
 @layer components {
   .button {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .button-primary {
-    @apply bg-primary-600 text-white shadow-sm hover:bg-primary-700 dark:bg-primary-600 dark:hover:bg-primary-500;
+    @apply bg-accent text-white shadow-sm hover:bg-accent-hover;
   }
 
   .button-secondary {
-    @apply border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
+    @apply border border-line bg-surface-canvas text-ink hover:border-line-strong hover:bg-surface-hover;
   }
 
   .button-danger {
@@ -76,19 +116,19 @@ select:-webkit-autofill {
   }
 
   .icon-button {
-    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:opacity-60 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white;
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink disabled:opacity-60;
   }
 
   .field {
-    @apply min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 placeholder:text-slate-500 focus:border-primary-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-primary-400 sm:text-sm;
+    @apply min-h-10 w-full rounded-lg border border-line-strong bg-surface-canvas px-3 py-2 text-base text-ink placeholder:text-ink-muted focus:border-accent sm:text-sm;
   }
 
   .panel {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;
+    @apply rounded-xl border border-line bg-surface-elevated shadow-sm;
   }
 
   .kbd-chip {
-    @apply inline-flex h-5 min-w-5 shrink-0 items-center justify-center whitespace-nowrap rounded border border-slate-300 bg-slate-100 px-1.5 font-mono text-[11px] font-medium leading-none text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300;
+    @apply inline-flex h-5 min-w-5 shrink-0 items-center justify-center whitespace-nowrap rounded border border-line-strong bg-surface-subtle px-1.5 font-mono text-[11px] font-medium leading-none text-ink-secondary;
   }
 
   .ux-scroll-contain {

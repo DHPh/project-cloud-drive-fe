@@ -104,7 +104,7 @@ function BoardPageShell({ session, children }: { session: ReturnType<typeof useA
 
 function BoardError({ error, retry }: { error: unknown; retry: () => void }) {
   const { text } = useLocale();
-  return <div role="alert" className="panel flex flex-wrap items-center justify-between gap-2 p-4 text-sm text-red-800">
+  return <div role="alert" className="panel flex flex-wrap items-center justify-between gap-2 p-4 text-sm text-danger">
     <p>{localizedError(error, text)}</p>
     <button type="button" className="button button-secondary min-h-11" onClick={retry}>{text.retry}</button>
   </div>;
@@ -213,11 +213,11 @@ export function BoardListScreen({ initialUser, page }: { initialUser: User; page
     {listing && <>
       {listing.data.items.length ? <ul className="grid gap-3 sm:grid-cols-2">
         {listing.data.items.map(board => <li key={board.id} className="panel min-w-0 p-4" data-testid="owner-board-card" data-board-id={board.id}>
-          <Link href={'/boards/' + board.id} className="block min-h-11 break-words font-semibold text-primary-800 hover:underline">{board.title}</Link>
-          <p className="text-sm text-gray-600">{t[board.visibility]}</p>
-          {board.hiddenAt && <p className="mt-2 text-sm text-amber-900">{t.hidden}</p>}
+          <Link href={'/boards/' + board.id} className="block min-h-11 break-words font-semibold text-accent-text hover:underline">{board.title}</Link>
+          <p className="text-sm text-ink-secondary">{t[board.visibility]}</p>
+          {board.hiddenAt && <p className="mt-2 text-sm text-warning">{t.hidden}</p>}
         </li>)}
-      </ul> : <p className="panel p-4 text-sm">{t.empty}</p>}
+      </ul> : <p className="panel p-4 text-sm text-ink-secondary">{t.empty}</p>}
       <BoardPagination page={page} totalPages={listing.pagination.totalPages} href={listHref} />
     </>}
     {creating && !session.expired && <Overlay
@@ -226,7 +226,7 @@ export function BoardListScreen({ initialUser, page }: { initialUser: User; page
     >
       <form onSubmit={create} className="min-h-0 space-y-4 overflow-y-auto p-5 sm:p-6">
         <BoardFormFields disabled={write.pending} initialFocus={input} />
-        {write.error && <p role="alert" className="text-sm text-red-800">{write.error}</p>}
+        {write.error && <p role="alert" className="text-sm text-danger">{write.error}</p>}
         <div className="flex flex-wrap justify-end gap-2">
           <button type="button" className="button button-secondary min-h-11" disabled={write.pending} onClick={close}>{text.cancel}</button>
           <button type="submit" className="button button-primary min-h-11" data-testid="board-create-submit" disabled={write.pending}>{t.create}</button>
@@ -365,12 +365,12 @@ export function BoardDetailScreen({ initialUser, boardId }: { initialUser: User;
     <h1 data-testid="board-heading" ref={heading} tabIndex={-1} className="break-words text-xl font-semibold">{board?.title ?? t.shareSettings}</h1>
     {query.isPending && !session.expired && <p role="status" className="panel p-4 text-sm">{text.loading}</p>}
     {query.error && !session.expired && <BoardError error={query.error} retry={() => void query.refetch()} />}
-    <p data-testid="board-status" role="status" className={write.status ? 'text-sm text-emerald-800' : 'sr-only'}>{write.status}</p>
-    {write.error && !confirming && !attaching && <p role="alert" className="text-sm text-red-800">{write.error}</p>}
+    <p data-testid="board-status" role="status" className={write.status ? 'text-sm text-success' : 'sr-only'}>{write.status}</p>
+    {write.error && !confirming && !attaching && <p role="alert" className="text-sm text-danger">{write.error}</p>}
     {board && <>
       <section className="panel space-y-4 p-4 sm:p-5" aria-labelledby="board-settings">
         <h2 id="board-settings" className="font-semibold">{t.shareSettings}</h2>
-        {board.hiddenAt && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">{t.hidden}</p>}
+        {board.hiddenAt && <p role="status" className="rounded-lg bg-warning-soft p-3 text-sm text-warning">{t.hidden}</p>}
         <form key={settingsKey} onSubmit={save} className="space-y-4">
           <BoardFormFields defaultTitle={board.title} defaultDescription={board.description ?? ''} disabled={write.pending} />
           <label className="block space-y-2 text-sm font-medium">
@@ -379,7 +379,7 @@ export function BoardDetailScreen({ initialUser, boardId }: { initialUser: User;
               <option value="draft">{t.draft}</option><option value="link">{t.link}</option><option value="discoverable">{t.discoverable}</option>
             </select>
           </label>
-          <p id="board-publishing-hint" className="text-sm text-gray-700">{t.publishingHint}</p>
+          <p id="board-publishing-hint" className="text-sm text-ink-secondary">{t.publishingHint}</p>
           <button type="submit" data-testid="board-settings-save" className="button button-primary min-h-11" disabled={write.pending}>{text.save}</button>
         </form>
         {publicHref && <div className="flex flex-wrap items-end gap-2" key={publicHref}>
@@ -398,10 +398,10 @@ export function BoardDetailScreen({ initialUser, boardId }: { initialUser: User;
           <button data-testid="board-attach-open" type="button" className="button button-secondary min-h-11" aria-disabled={write.pending || board.items.length >= 100}
             onClick={event => { if (write.pending || board.items.length >= 100) return; write.clearError(); setAttaching(event.currentTarget); }}>{t.attach}</button>
         </header>
-        {board.items.length ? <ol className="divide-y divide-gray-200">
+        {board.items.length ? <ol className="divide-y divide-line">
           {board.items.map((item, index) => <li key={item.id} data-testid="board-item" data-item-id={item.id} className="min-w-0 space-y-2 py-3">
             <p className="break-words text-sm font-semibold">{item.originalName}</p>
-            <p className="text-sm text-gray-600">{readableSize(item.size, locale)}{!item.available && ' · ' + t.unavailable}</p>
+            <p className="text-sm text-ink-muted">{readableSize(item.size, locale)}{!item.available && ' · ' + t.unavailable}</p>
             <div className="flex flex-wrap items-center gap-x-4">
               <label className="flex min-h-11 items-center gap-2 text-sm">
                 <input type="checkbox" data-testid="board-item-published" checked={item.published} disabled={!item.available} aria-disabled={write.pending}
@@ -419,10 +419,10 @@ export function BoardDetailScreen({ initialUser, boardId }: { initialUser: User;
                 onClick={event => { write.clearError(); setConfirming({ action: 'item', itemId: item.id, trigger: event.currentTarget }); }}>{t.remove}</button>
             </div>
           </li>)}
-        </ol> : <p className="text-sm text-gray-700">{t.noFiles}</p>}
+        </ol> : <p className="text-sm text-ink-secondary">{t.noFiles}</p>}
       </section>
 
-      <button type="button" data-testid="board-delete-open" className="button button-secondary min-h-11 text-red-800" disabled={write.pending}
+      <button type="button" data-testid="board-delete-open" className="button button-secondary min-h-11 text-danger" disabled={write.pending}
         onClick={event => { write.clearError(); setConfirming({ action: 'board', trigger: event.currentTarget }); }}>{t.delete}</button>
       {attaching && <AttachDialog
         board={board} userId={session.user.id} opener={attaching} write={write} onDismiss={closeDialog}
@@ -439,7 +439,7 @@ export function BoardDetailScreen({ initialUser, boardId }: { initialUser: User;
         restoreFocus={confirming.trigger} restoreFallback={() => heading.current?.focus()} initialFocus={cancel}
       >
         <div className="min-h-0 space-y-3 overflow-y-auto p-5 sm:p-6">
-          {write.error && <p role="alert" className="text-sm text-red-800">{write.error}</p>}
+          {write.error && <p role="alert" className="text-sm text-danger">{write.error}</p>}
           <div className="flex flex-wrap justify-end gap-2">
             <button ref={cancel} type="button" className="button button-secondary min-h-11" disabled={write.pending} onClick={closeDialog}>{text.cancel}</button>
             <button type="button" className="button button-danger min-h-11" data-testid="board-delete-confirm" disabled={write.pending} onClick={confirmDelete}>{confirming.action === 'board' ? t.delete : t.remove}</button>
@@ -493,18 +493,18 @@ function AttachDialog({ board, userId, opener, write, onDismiss, onSessionExpire
       </form>
       {query.isPending && <p role="status" className="text-sm">{text.loading}</p>}
       {query.error && <BoardError error={query.error} retry={() => void query.refetch()} />}
-      {write.error && <p role="alert" className="text-sm text-red-800">{write.error}</p>}
+      {write.error && <p role="alert" className="text-sm text-danger">{write.error}</p>}
       {results && <>
-        {files?.length ? <ul className="divide-y divide-gray-200">
+        {files?.length ? <ul className="divide-y divide-line">
           {files.map(({ item, breadcrumbs }) => <li key={item.id} data-testid="board-file-result" className="flex flex-wrap items-center justify-between gap-2 py-2">
             <div className="min-w-0 grow basis-44 break-words">
               <p className="text-sm font-medium">{item.originalName}</p>
-              <p className="text-xs text-gray-600">{breadcrumbs.length ? breadcrumbs.map(crumb => crumb.name).join(' › ') : text.myDrive}</p>
+              <p className="text-xs text-ink-muted">{breadcrumbs.length ? breadcrumbs.map(crumb => crumb.name).join(' › ') : text.myDrive}</p>
             </div>
             <button type="button" className="button button-secondary min-h-11" data-testid="board-file-add" disabled={write.pending}
               aria-label={t.add + ': ' + item.originalName} onClick={() => onSelect(item.id)}>{t.add}</button>
           </li>)}
-        </ul> : <p className="text-sm text-gray-700">{t.noResults}</p>}
+        </ul> : <p className="text-sm text-ink-secondary">{t.noResults}</p>}
         <BoardPagination page={search.page} totalPages={results.pagination.totalPages} update={page => setSearch(previous => ({ ...previous, page }))} />
       </>}
     </div>
