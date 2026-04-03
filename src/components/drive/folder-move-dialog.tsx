@@ -115,35 +115,35 @@ export function MoveDialog({ item, userId, trigger, suspended, onDismiss, onExpi
         {destination.id !== 'root' && (
           <nav aria-label={text.breadcrumb}>
             <ol className="flex flex-wrap items-center gap-1 text-sm">
-              <li><button type="button" data-testid="move-picker-root" className="min-h-11 rounded-md px-2 text-primary-800 hover:bg-primary-50" disabled={pending} onClick={() => browse('root', '')}>{text.myDrive}</button></li>
+              <li><button type="button" data-testid="move-picker-root" className="min-h-11 rounded-md px-2 text-primary-800 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-500/15" disabled={pending} onClick={() => browse('root', '')}>{text.myDrive}</button></li>
               {ancestors.map((crumb) => (
                 <li key={crumb.id} className="flex min-w-0 items-center gap-1">
-                  <ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-500" />
-                  <button type="button" data-testid="move-picker-ancestor" data-folder-id={crumb.id} className="min-h-11 min-w-0 truncate rounded-md px-2 text-primary-800 hover:bg-primary-50" title={crumb.name} disabled={pending} onClick={() => browse(crumb.id, crumb.name)}>{crumb.name}</button>
+                  <ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+                  <button type="button" data-testid="move-picker-ancestor" data-folder-id={crumb.id} className="min-h-11 min-w-0 truncate rounded-md px-2 text-primary-800 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-500/15" title={crumb.name} disabled={pending} onClick={() => browse(crumb.id, crumb.name)}>{crumb.name}</button>
                 </li>
               ))}
             </ol>
           </nav>
         )}
-        <h3 ref={currentHeading} tabIndex={-1} data-testid="move-picker-current" data-folder-id={destination.id} className="break-words rounded-md text-sm font-medium text-gray-900">
+        <h3 ref={currentHeading} tabIndex={-1} data-testid="move-picker-current" data-folder-id={destination.id} className="break-words rounded-md text-sm font-medium text-slate-900 dark:text-slate-100">
           {destination.id === 'root' ? text.myDrive : data?.folder?.name ?? destination.name}
         </h3>
-        {loading && !suspended && <p role="status" data-testid="move-picker-loading" className="text-sm text-gray-600">{text.loading}</p>}
+        {loading && !suspended && <p role="status" data-testid="move-picker-loading" className="text-sm text-slate-600 dark:text-slate-400">{text.loading}</p>}
         {query.isError && !suspended && (
-          <div role="alert" className="space-y-2 rounded-lg bg-red-50 p-3 text-sm text-red-800">
+          <div role="alert" className="space-y-2 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/50 dark:text-red-200">
             <p>{localizedError(query.error, text)}</p>
             <button type="button" data-testid="move-picker-retry" className="button button-secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>
           </div>
         )}
-        {forbidden && <p role="alert" className="text-sm text-red-800">{text.invalidFolderMove}</p>}
-        {query.isSuccess && !loading && !forbidden && available.length === 0 && <p data-testid="move-picker-empty" className="text-sm text-gray-600">{text.movePickerEmpty}</p>}
+        {forbidden && <p role="alert" className="text-sm text-red-800 dark:text-red-300">{text.invalidFolderMove}</p>}
+        {query.isSuccess && !loading && !forbidden && available.length === 0 && <p data-testid="move-picker-empty" className="text-sm text-slate-600 dark:text-slate-400">{text.movePickerEmpty}</p>}
         {query.isSuccess && !loading && !forbidden && available.length > 0 && (
-          <ul aria-busy={query.isFetching} className="divide-y divide-gray-200 rounded-lg border border-gray-200">
+          <ul aria-busy={query.isFetching} className="divide-y divide-slate-200 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
             {available.map((option) => (
               <li key={option.id}>
-                <button type="button" data-testid="move-picker-folder" data-folder-id={option.id} className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-gray-50"
+                <button type="button" data-testid="move-picker-folder" data-folder-id={option.id} className="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                   title={option.name} disabled={pending} onClick={() => browse(option.id, option.name)}>
-                  <FolderIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-amber-700" /><span className="min-w-0 flex-1 break-words">{option.name}</span><ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-gray-500" />
+                  <FolderIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" /><span className="min-w-0 flex-1 break-words">{option.name}</span><ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
                 </button>
               </li>
             ))}

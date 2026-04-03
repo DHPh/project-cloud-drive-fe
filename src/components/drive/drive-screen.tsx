@@ -670,48 +670,50 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
       </div>
 
       {selectedIds.size > 0 && (
-        <div
-          role="region"
-          aria-label={vi ? 'Thao tác hàng loạt' : 'Bulk actions'}
-          className="ux-popover-enter fixed bottom-5 left-1/2 z-30 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-1.5 overflow-x-auto rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white shadow-2xl"
-        >
-          <span className="whitespace-nowrap px-2 font-semibold tabular-nums">
-            {vi ? `Đã chọn ${selectedIds.size} mục` : `${selectedIds.size} selected`}
-          </span>
-          {singleSelectedItem && canManage && (
-            <button
-              type="button"
-              onClick={(event) => openMove(singleSelectedItem, event.currentTarget)}
-              className="whitespace-nowrap rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold hover:bg-slate-700"
-            >
-              {text.move}
-            </button>
-          )}
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => {
-                if (singleSelectedItem) {
-                  openTrash(singleSelectedItem, document.getElementById('drive-main') ?? document.body);
-                } else {
-                  setBulkTrashError(null);
-                  setBulkTrashOpen(true);
-                }
-              }}
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-red-600/90 px-3 py-1 text-xs font-semibold text-white hover:bg-red-600"
-            >
-              <TrashIcon aria-hidden="true" className="h-3.5 w-3.5" />
-              {text.moveToTrash}
-            </button>
-          )}
-          <button
-            type="button"
-            aria-label={vi ? 'Bỏ chọn' : 'Clear selection'}
-            onClick={() => setSelectedIds(new Set())}
-            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-800 hover:text-white"
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-3">
+          <div
+            role="region"
+            aria-label={vi ? 'Thao tác hàng loạt' : 'Bulk actions'}
+            className="ux-popover-enter pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-slate-700 bg-slate-900/95 px-3 py-2 text-sm text-white shadow-2xl backdrop-blur-sm sm:rounded-full sm:py-1.5"
           >
-            <XMarkIcon className="h-4 w-4" />
-          </button>
+            <span className="whitespace-nowrap px-2 font-semibold tabular-nums">
+              {vi ? `Đã chọn ${selectedIds.size} mục` : `${selectedIds.size} selected`}
+            </span>
+            {singleSelectedItem && canManage && (
+              <button
+                type="button"
+                onClick={(event) => openMove(singleSelectedItem, event.currentTarget)}
+                className="whitespace-nowrap rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold hover:bg-slate-700"
+              >
+                {text.move}
+              </button>
+            )}
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (singleSelectedItem) {
+                    openTrash(singleSelectedItem, document.getElementById('drive-main') ?? document.body);
+                  } else {
+                    setBulkTrashError(null);
+                    setBulkTrashOpen(true);
+                  }
+                }}
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-red-600/90 px-3 py-1 text-xs font-semibold text-white hover:bg-red-600"
+              >
+                <TrashIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                {text.moveToTrash}
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label={vi ? 'Bỏ chọn' : 'Clear selection'}
+              onClick={() => setSelectedIds(new Set())}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-800 hover:text-white"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 

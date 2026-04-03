@@ -104,7 +104,7 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
             label: text.createFolder,
             hint: 'Shift+N',
             Icon: FolderPlusIcon,
-            iconClasses: 'bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300',
+            iconClasses: 'bg-primary-50 text-primary-700 dark:bg-primary-900/60 dark:text-primary-300',
             run: () => { onDismiss(); onCreateFolder(); },
           }]
         : []),
@@ -115,7 +115,7 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
             label: text.upload,
             hint: 'U',
             Icon: ArrowUpTrayIcon,
-            iconClasses: 'bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300',
+            iconClasses: 'bg-primary-50 text-primary-700 dark:bg-primary-900/60 dark:text-primary-300',
             run: () => { onDismiss(); onUpload(); },
           }]
         : []),
@@ -282,7 +282,7 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
             event.preventDefault();
             inputRef.current?.focus();
           }}
-          className="ux-popover-enter fixed left-1/2 top-[10vh] z-[75] flex w-[calc(100%-1.5rem)] max-w-xl -translate-x-1/2 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+          className="ux-popover-enter fixed inset-x-0 top-[10vh] z-[75] mx-auto flex w-[calc(100%-1.5rem)] max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
         >
           <Dialog.Title className="sr-only">{vi ? 'Command Palette' : 'Command Palette'}</Dialog.Title>
           <Dialog.Description className="sr-only">
@@ -340,7 +340,7 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
                 return (
                   <div key={entry.id}>
                     {showGroup && (
-                      <p className="px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <p className="px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                         {entry.group}
                       </p>
                     )}
@@ -350,7 +350,7 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
                       onClick={entry.run}
                       className={`flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
                         active
-                          ? 'bg-primary-50 text-primary-800 dark:bg-primary-950/60 dark:text-primary-200'
+                          ? 'bg-primary-50 text-primary-800 dark:bg-primary-500/20 dark:text-primary-200'
                           : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'
                       }`}
                     >
@@ -358,7 +358,7 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
                         <entry.Icon aria-hidden="true" className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1 break-words font-medium leading-snug">{entry.label}</span>
-                      <span className="mt-0.5 max-w-[11rem] shrink-0 truncate text-xs text-slate-400 dark:text-slate-500" title={entry.hint}>
+                      <span className={`mt-0.5 max-w-[11rem] shrink-0 truncate text-xs ${active ? 'text-primary-700/80 dark:text-primary-300/90' : 'text-slate-500 dark:text-slate-400'}`} title={entry.hint}>
                         {entry.hint}
                       </span>
                     </button>

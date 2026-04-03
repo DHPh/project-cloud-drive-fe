@@ -52,19 +52,19 @@ export function SharedFilesScreen({ initialUser }: { initialUser: User }) {
     <>
       <DriveLayout user={user} section="shared" signingOut={signingOut} signOutError={signOutError} onSignOut={() => void signOut()}>
         <div className="mx-auto max-w-screen-2xl space-y-5 p-4 sm:p-6 lg:p-8">
-          <h1 id="shared-heading" className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <UserGroupIcon aria-hidden="true" className="h-6 w-6 shrink-0 text-gray-600" />{text.sharedWithMe}
+          <h1 id="shared-heading" className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+            <UserGroupIcon aria-hidden="true" className="h-6 w-6 shrink-0 text-slate-600 dark:text-slate-400" />{text.sharedWithMe}
           </h1>
-          <nav aria-label={text.sharedTypes} className="flex w-fit gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
+          <nav aria-label={text.sharedTypes} className="flex w-fit gap-1 rounded-xl border border-slate-200 bg-slate-100/80 p-1 dark:border-slate-800 dark:bg-slate-900">
             {(['files', 'folders'] as const).map((option) => (
               <Link key={option} href={sharedHref(1, option)} prefetch={false} data-testid={`shared-tab-${option}`} aria-current={option === tab ? 'page' : undefined}
-                className={`button min-h-11 ${option === tab ? 'bg-primary-100 text-primary-900' : 'text-gray-700 hover:bg-white'}`}>
+                className={`button min-h-11 ${option === tab ? 'bg-primary-100 text-primary-900 dark:bg-primary-500/20 dark:text-primary-200' : 'text-slate-700 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800'}`}>
                 {option === 'files' ? text.files : text.folders}
               </Link>
             ))}
           </nav>
           {requestError && (
-            <div data-testid="shared-error" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">
+            <div data-testid="shared-error" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200">
               <p>{localizedError(requestError, text)}</p>
               <button data-testid="shared-retry" type="button" className="button button-secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>
             </div>
@@ -72,14 +72,14 @@ export function SharedFilesScreen({ initialUser }: { initialUser: User }) {
           {(checkingAccess || shouldMovePage) && !expired && !requestError && (
             <div data-testid="shared-loading" role="status" aria-busy="true" className="space-y-2">
               <span className="sr-only">{text.loading}</span>
-              {Array.from({ length: 3 }, (_, index) => <div key={index} aria-hidden="true" className="h-[4.5rem] rounded-lg border border-gray-100 bg-gray-100 motion-safe:animate-pulse" />)}
+              {Array.from({ length: 3 }, (_, index) => <div key={index} aria-hidden="true" className="h-[4.5rem] rounded-lg border border-slate-200 bg-slate-100 motion-safe:animate-pulse dark:border-slate-800 dark:bg-slate-800" />)}
             </div>
           )}
           {items?.length === 0 && !error && !isPlaceholderData && !shouldMovePage && !expired && !checkingAccess && (
             <div data-testid="shared-empty" className="flex flex-col items-center gap-3 py-14 text-center sm:py-20">
-              <div className="flex h-32 w-32 items-center justify-center rounded-full bg-gray-100 sm:h-40 sm:w-40"><UserGroupIcon aria-hidden="true" className="h-16 w-16 text-gray-400" /></div>
-              <h2 className="text-lg font-semibold">{tab === 'folders' ? text.noSharedFolders : text.noSharedFiles}</h2>
-              <p className="text-sm text-gray-600">{tab === 'folders' ? text.noSharedFoldersDescription : text.noSharedDescription}</p>
+              <div className="flex h-32 w-32 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 sm:h-40 sm:w-40"><UserGroupIcon aria-hidden="true" className="h-16 w-16 text-slate-400" /></div>
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{tab === 'folders' ? text.noSharedFolders : text.noSharedFiles}</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">{tab === 'folders' ? text.noSharedFoldersDescription : text.noSharedDescription}</p>
               <Link href="/drive" prefetch={false} className="button button-secondary">{text.backToDrive}</Link>
             </div>
           )}
@@ -92,7 +92,7 @@ export function SharedFilesScreen({ initialUser }: { initialUser: User }) {
                   <li key={item.id} data-testid={item.kind === 'folder' ? 'shared-folder' : 'shared-item'} data-item-id={item.id} className={`panel grid min-w-0 items-center gap-2 px-2 py-2.5 sm:gap-3 sm:px-3 ${item.kind === 'folder' ? 'grid-cols-[auto_minmax(0,1fr)]' : 'grid-cols-[auto_minmax(0,1fr)_auto]'}`}>
                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10 ${iconMeta.classes}`}><iconMeta.Icon aria-hidden="true" className="h-5 w-5" /></span>
                     <div className="min-w-0">
-                      <Link data-testid={item.kind === 'folder' ? 'shared-folder-link' : 'shared-file-link'} href={item.kind === 'folder' ? driveHref(item.id) : fileHref(item.id)} prefetch={false} className="line-clamp-2 break-words rounded-sm text-sm font-medium text-primary-800 hover:underline" title={name}>{name}</Link>
+                      <Link data-testid={item.kind === 'folder' ? 'shared-folder-link' : 'shared-file-link'} href={item.kind === 'folder' ? driveHref(item.id) : fileHref(item.id)} prefetch={false} className="line-clamp-2 break-words rounded-sm text-sm font-medium text-primary-800 hover:underline dark:text-primary-300" title={name}>{name}</Link>
                       <p className="mt-0.5 break-words text-xs text-gray-600">{item.kind === 'folder' ? text.sharedFolderBy : text.sharedBy} <span className="font-medium">{item.ownerName}</span>{item.kind === 'file' && <> <span aria-hidden="true">·</span> {readableSize(item.size, locale)}</>}</p>
                       <p className="mt-0.5 text-xs text-gray-600">{text.expiresAt} <time dateTime={item.expiresAt}>{dateFormat.format(new Date(item.expiresAt))}</time> ({text.vietnamTime})</p>
                     </div>

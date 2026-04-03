@@ -45,18 +45,18 @@ const copy = {
 function PublicBoardLayout({ explore, children }: { explore?: boolean; children: ReactNode }) {
   const { locale, text } = useLocale();
   return (
-    <div className="safe-top safe-bottom min-h-dvh bg-gray-50">
-      <a href="#public-board-main" className="sr-only z-40 focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:rounded-md focus:bg-white focus:p-3">{text.skip}</a>
-      <header className="border-b border-gray-200 bg-white">
+    <div className="safe-top safe-bottom min-h-dvh bg-slate-50 dark:bg-slate-950">
+      <a href="#public-board-main" className="sr-only z-40 focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:rounded-md focus:bg-white focus:p-3 focus:text-slate-900">{text.skip}</a>
+      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto flex min-h-16 max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:gap-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2">
             <BrandIcon />
-            <span className="text-sm font-semibold text-gray-900 sm:text-base">Cloud Drive</span>
+            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 sm:text-base">Cloud Drive</span>
           </div>
           <div className="flex flex-wrap items-center gap-1 sm:gap-3">
             <nav aria-label={text.navigation} className="flex">
-              <Link href="/explore" prefetch={false} aria-current={explore ? 'page' : undefined} className={`button min-h-11 px-2 sm:px-3 ${explore ? 'bg-primary-100 text-primary-900' : 'text-gray-700 hover:bg-gray-100'}`}>{copy[locale].explore}</Link>
-              <Link href="/drive" prefetch={false} className="button min-h-11 px-2 text-gray-700 hover:bg-gray-100 sm:px-3">{text.myDrive}</Link>
+              <Link href="/explore" prefetch={false} aria-current={explore ? 'page' : undefined} className={`button min-h-11 px-2 sm:px-3 ${explore ? 'bg-primary-100 text-primary-900 dark:bg-primary-500/20 dark:text-primary-200' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>{copy[locale].explore}</Link>
+              <Link href="/drive" prefetch={false} className="button min-h-11 px-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:px-3">{text.myDrive}</Link>
             </nav>
             <LanguageSwitch />
           </div>
@@ -126,12 +126,12 @@ export function PublicBoardScreen({ publicId }: { publicId: string }) {
 
   return (
     <PublicBoardLayout>
-      <Link href="/explore" prefetch={false} className="button min-h-11 w-fit px-2 text-primary-800 hover:bg-primary-50">
+      <Link href="/explore" prefetch={false} className="button min-h-11 w-fit px-2 text-primary-800 hover:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-500/15">
         <ArrowLeftIcon aria-hidden="true" className="h-4 w-4" />{labels.backToExplore}
       </Link>
-      {checking && <p role="status" className="panel p-4 text-sm text-gray-600">{text.loading}</p>}
+      {checking && <p role="status" className="panel p-4 text-sm text-slate-600 dark:text-slate-400">{text.loading}</p>}
       {query.error && (
-        <div data-testid="public-board-error" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-900">
+        <div data-testid="public-board-error" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200">
           <h1 className="text-base font-semibold">{unavailable ? labels.unavailable : localizedError(query.error, text)}</h1>
           {!unavailable && <button type="button" className="button button-secondary min-h-11" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>}
         </div>
@@ -149,22 +149,22 @@ function PublicBoardContent({ board }: { board: components['schemas']['PublicBoa
   return (
     <>
       <header className="panel p-4 sm:p-6">
-        <h1 ref={heading} tabIndex={-1} data-testid="public-board-heading" className="w-fit rounded-sm text-2xl font-semibold text-gray-900 [overflow-wrap:anywhere]">{board.title}</h1>
-        {board.description && <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-700 [overflow-wrap:anywhere]">{board.description}</p>}
+        <h1 ref={heading} tabIndex={-1} data-testid="public-board-heading" className="w-fit rounded-sm text-2xl font-semibold text-slate-900 [overflow-wrap:anywhere] dark:text-slate-100">{board.title}</h1>
+        {board.description && <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 [overflow-wrap:anywhere] dark:text-slate-300">{board.description}</p>}
       </header>
       <section aria-labelledby="public-board-files" className="space-y-3">
-        <h2 id="public-board-files" className="text-lg font-semibold text-gray-900">{labels.publishedFiles}</h2>
+        <h2 id="public-board-files" className="text-lg font-semibold text-slate-900 dark:text-slate-100">{labels.publishedFiles}</h2>
         {board.items.length === 0 ? (
-          <p data-testid="public-board-empty" className="panel p-4 text-sm text-gray-600">{labels.emptyBoard}</p>
+          <p data-testid="public-board-empty" className="panel p-4 text-sm text-slate-600 dark:text-slate-400">{labels.emptyBoard}</p>
         ) : (
           <ul className="space-y-2">
             {board.items.map((item) => (
               <li key={item.id} data-testid="public-board-item" data-item-id={item.id} className="panel grid min-w-0 items-start gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-4">
                 <div className="flex min-w-0 items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-900"><DocumentIcon aria-hidden="true" className="h-5 w-5" /></span>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-900 dark:bg-primary-900/60 dark:text-primary-200"><DocumentIcon aria-hidden="true" className="h-5 w-5" /></span>
                   <div className="min-w-0 [overflow-wrap:anywhere]">
-                    <h3 className="text-sm font-semibold text-gray-900">{item.originalName}</h3>
-                    <p className="mt-1 text-xs text-gray-600">{readableSize(item.size, locale)}{item.mimeType && <> <span aria-hidden="true">·</span> {item.mimeType}</>}</p>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{item.originalName}</h3>
+                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{readableSize(item.size, locale)}{item.mimeType && <> <span aria-hidden="true">·</span> {item.mimeType}</>}</p>
                   </div>
                 </div>
                 {(item.canPreview || item.allowDownload) && <div className="flex flex-wrap items-center gap-2">
@@ -228,18 +228,18 @@ function PublicBoardPreview({ publicId, item, trigger, onDismiss, restoreFallbac
   return (
     <Overlay testId="public-board-preview-dialog" title={labels.preview} description={labels.previewDescription} initialFocus={close} onDismiss={onDismiss} restoreFocus={trigger} restoreFallback={restoreFallback}>
       <div className="min-h-0 space-y-3 overflow-y-auto px-5 py-4 text-sm sm:px-6">
-        <p className="font-medium text-gray-900 [overflow-wrap:anywhere]">{item.originalName}</p>
-        {query.isFetching && <p role="status" className="text-gray-600">{text.loading}</p>}
-        {query.error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 p-3 text-red-900">
+        <p className="font-medium text-slate-900 [overflow-wrap:anywhere] dark:text-slate-100">{item.originalName}</p>
+        {query.isFetching && <p role="status" className="text-slate-600 dark:text-slate-400">{text.loading}</p>}
+        {query.error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 p-3 text-red-900 dark:bg-red-950/50 dark:text-red-200">
           <p>{unavailable ? labels.previewUnavailable : localizedError(query.error, text)}</p>
           {!unavailable && <button type="button" className="button button-secondary min-h-11" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>}
         </div>}
         {excerpt && <>
-          <pre data-testid="public-board-preview" className="whitespace-pre-wrap rounded-lg bg-gray-100 p-3 font-mono text-sm leading-relaxed text-gray-900 [overflow-wrap:anywhere]">{excerpt.text}</pre>
-          {excerpt.truncated && <p className="text-gray-600">{labels.truncated}</p>}
+          <pre data-testid="public-board-preview" className="whitespace-pre-wrap rounded-lg bg-slate-100 p-3 font-mono text-sm leading-relaxed text-slate-900 [overflow-wrap:anywhere] dark:bg-slate-800 dark:text-slate-100">{excerpt.text}</pre>
+          {excerpt.truncated && <p className="text-slate-600 dark:text-slate-400">{labels.truncated}</p>}
         </>}
       </div>
-      <footer className="flex shrink-0 justify-end border-t border-gray-200 px-5 py-3 sm:px-6">
+      <footer className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-3 dark:border-slate-800 sm:px-6">
         <button ref={close} type="button" data-testid="public-board-preview-close" className="button button-secondary min-h-11" onClick={onDismiss}>{text.close}</button>
       </footer>
     </Overlay>

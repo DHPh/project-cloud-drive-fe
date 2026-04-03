@@ -70,14 +70,14 @@ export function DriveItems({
     <div
       className={`ux-hover-reveal flex shrink-0 items-center justify-end gap-0.5 transition-opacity ${
         grid
-          ? 'rounded-lg border border-slate-200 bg-white/95 p-0.5 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100'
-          : 'sm:opacity-60 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100'
+          ? 'sm:opacity-70 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100'
+          : 'sm:opacity-70 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100'
       }`}
     >
       {item.kind === 'file' && onPreview && (
         <button
           type="button"
-          className="icon-button h-9 w-9 sm:h-8 sm:w-8"
+          className={`icon-button ${grid ? 'h-8 w-8 sm:h-7 sm:w-7' : 'h-9 w-9 sm:h-8 sm:w-8'}`}
           title={vi ? 'Xem nhanh (Space)' : 'Quick preview (Space)'}
           aria-label={`${vi ? 'Xem nhanh' : 'Preview'}: ${name}`}
           onClick={(event) => { event.stopPropagation(); onPreview(item); }}
@@ -89,7 +89,7 @@ export function DriveItems({
         <button
           type="button"
           data-testid={item.kind === 'folder' ? 'folder-share' : 'file-share'}
-          className="icon-button h-9 w-9 sm:h-8 sm:w-8"
+          className={`icon-button ${grid ? 'h-8 w-8 sm:h-7 sm:w-7' : 'h-9 w-9 sm:h-8 sm:w-8'}`}
           title={text.share}
           aria-label={`${text.share}: ${name}`}
           onClick={(event) => { event.stopPropagation(); onShare(item, event.currentTarget); }}
@@ -101,7 +101,7 @@ export function DriveItems({
         <button
           type="button"
           data-testid={item.kind === 'folder' ? 'folder-rename' : 'file-rename'}
-          className="icon-button h-9 w-9 sm:h-8 sm:w-8"
+          className={`icon-button ${grid ? 'h-8 w-8 sm:h-7 sm:w-7' : 'h-9 w-9 sm:h-8 sm:w-8'}`}
           title={item.kind === 'folder' ? text.editFolderInfo : text.rename}
           aria-label={item.kind === 'folder' ? `${text.editFolderInfo} ${name}` : `${text.rename}: ${name}`}
           onClick={(event) => {
@@ -118,7 +118,7 @@ export function DriveItems({
           type="button"
           id={`${item.kind}-move-${item.id}`}
           data-testid={item.kind === 'folder' ? 'folder-move' : 'file-move'}
-          className="icon-button h-9 w-9 sm:h-8 sm:w-8"
+          className={`icon-button ${grid ? 'h-8 w-8 sm:h-7 sm:w-7' : 'h-9 w-9 sm:h-8 sm:w-8'}`}
           title={text.move}
           aria-label={`${text.move}: ${name}`}
           onClick={(event) => { event.stopPropagation(); onMove(item, event.currentTarget); }}
@@ -132,7 +132,7 @@ export function DriveItems({
           href={downloadUrl(item.id)}
           download={name}
           onClick={(event) => event.stopPropagation()}
-          className="icon-button h-9 w-9 sm:h-8 sm:w-8"
+          className={`icon-button ${grid ? 'h-8 w-8 sm:h-7 sm:w-7' : 'h-9 w-9 sm:h-8 sm:w-8'}`}
           title={text.download}
           aria-label={`${text.download}: ${name}`}
         >
@@ -144,7 +144,7 @@ export function DriveItems({
           type="button"
           id={`drive-trash-${item.kind}-${item.id}`}
           data-testid={item.kind === 'folder' ? 'folder-trash' : 'file-trash'}
-          className="icon-button h-9 w-9 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/60 dark:hover:text-red-400 sm:h-8 sm:w-8"
+          className={`icon-button hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/60 dark:hover:text-red-400 ${grid ? 'h-8 w-8 sm:h-7 sm:w-7' : 'h-9 w-9 sm:h-8 sm:w-8'}`}
           title={item.kind === 'folder' ? text.moveFolderToTrash : text.moveToTrash}
           aria-label={`${item.kind === 'folder' ? text.moveFolderToTrash : text.moveToTrash}: ${name}`}
           onClick={(event) => { event.stopPropagation(); onTrash(item, event.currentTarget); }}
@@ -279,13 +279,13 @@ export function DriveItems({
                 data-item-id={item.id}
                 onClick={(event) => onSelect?.(item, event)}
                 onContextMenu={(event) => onContextMenu?.(item, event)}
-                className={`panel group relative flex min-w-0 flex-col gap-2 px-3.5 py-3 transition-all sm:min-h-[86px] ${
+                className={`panel group relative flex min-w-0 flex-col gap-2 px-3.5 py-2.5 transition-all ${
                   isSelected
                     ? 'border-primary-600 bg-primary-50/70 ring-1 ring-primary-600 dark:border-primary-400 dark:bg-primary-950/40 dark:ring-primary-400'
                     : 'hover:border-slate-300 hover:bg-slate-50/70 dark:hover:border-slate-700 dark:hover:bg-slate-800/50'
                 }`}
               >
-                <div className="flex min-w-0 items-start gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
                     <span
                       className={`flex h-10 w-10 items-center justify-center rounded-lg transition-opacity ${folderIconClasses} ${
@@ -332,7 +332,7 @@ export function DriveItems({
                   </div>
                 </div>
                 {canManage && (
-                  <div className="flex justify-end sm:absolute sm:bottom-2 sm:right-2">
+                  <div className="flex items-center justify-end border-t border-slate-100 pt-1.5 dark:border-slate-800/80">
                     {actionButtons(item, item.name)}
                   </div>
                 )}
@@ -355,7 +355,15 @@ export function DriveItems({
                   : 'hover:border-slate-300 hover:shadow-md dark:hover:border-slate-700'
               }`}
             >
-              <div className={`relative flex h-28 items-center justify-center border-b border-slate-200 bg-gradient-to-br dark:border-slate-800 ${icon.tint}`}>
+              <div
+                onClick={(event) => {
+                  if (onPreview) {
+                    event.stopPropagation();
+                    onPreview(item);
+                  }
+                }}
+                className={`relative flex h-28 items-center justify-center border-b border-slate-200 bg-gradient-to-br dark:border-slate-800 ${icon.tint} ${onPreview ? 'cursor-pointer' : ''}`}
+              >
                 {onToggleCheck && (
                   <button
                     type="button"
@@ -373,8 +381,7 @@ export function DriveItems({
                     <CheckIcon aria-hidden="true" className="h-3.5 w-3.5" />
                   </button>
                 )}
-                <div className="absolute right-2 top-2 z-10">{actionButtons(item, item.originalName)}</div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-sm ${icon.classes}`}>
+                <span className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:scale-105 ${icon.classes}`}>
                   <icon.Icon aria-hidden="true" className="h-6 w-6" />
                 </span>
               </div>
@@ -397,6 +404,9 @@ export function DriveItems({
                     {readableSize(item.size, locale)} · <time dateTime={item.updatedAt}>{dateFormat.format(new Date(item.updatedAt))}</time>
                   </p>
                 </div>
+              </div>
+              <div className="flex items-center justify-end border-t border-slate-100 bg-slate-50/60 px-2 py-1 dark:border-slate-800/80 dark:bg-slate-800/30">
+                {actionButtons(item, item.originalName)}
               </div>
             </li>
           );

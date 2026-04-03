@@ -31,6 +31,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     <html lang={locale} className={`${plusJakartaSans.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('cloud_drive_theme')==='dark')document.documentElement.classList.add('dark')}catch{}" }} />
+      </head>
       <body><Providers initialLocale={locale}>{children}</Providers></body>
     </html>
   );

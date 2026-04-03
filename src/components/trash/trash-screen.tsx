@@ -173,8 +173,8 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
       <DriveLayout user={user} signingOut={signingOut} signOutError={signOutError} onSignOut={() => void signOut()}>
         <div className="mx-auto max-w-screen-2xl space-y-5 p-4 sm:p-6 lg:p-8">
           <header className="flex flex-wrap items-center justify-between gap-2">
-            <h1 id="trash-heading" ref={heading} tabIndex={-1} className="flex w-fit items-center gap-2 rounded-md px-1 py-1 text-lg font-semibold text-gray-900">
-              <TrashIcon aria-hidden="true" className="h-6 w-6 text-gray-600" />{text.trash}
+            <h1 id="trash-heading" ref={heading} tabIndex={-1} className="flex w-fit items-center gap-2 rounded-md px-1 py-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
+              <TrashIcon aria-hidden="true" className="h-6 w-6 text-slate-600 dark:text-slate-400" />{text.trash}
             </h1>
             {canAct && summary && summary.recoverableCount > 0 && (
               <button type="button" data-testid="trash-empty-open" className="button button-danger min-h-11" disabled={Boolean(restoring)} onClick={(event) => {
@@ -187,24 +187,24 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
           {summary && !expired && (
             <section aria-label={text.trashSummary} data-testid="trash-summary" className="panel p-3 sm:p-4">
               <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4" aria-live="polite">
-                <div className="min-w-0"><dt className="text-gray-600">{text.trashRemainingBytes}</dt><dd data-testid="trash-remaining-bytes" className="mt-1 font-semibold tabular-nums">{readableSize(summary.remainingBytes, locale)}</dd></div>
-                <div><dt className="text-gray-600">{text.trashAvailable}</dt><dd data-testid="trash-available-count" className="mt-1 font-medium tabular-nums">{numberFormat.format(summary.recoverableCount)}</dd></div>
-                <div><dt className="text-gray-600">{text.trashPurging}</dt><dd data-testid="trash-purging-count" className="mt-1 font-medium tabular-nums">{numberFormat.format(summary.purgingCount)}</dd></div>
-                <div><dt className="text-gray-600">{text.trashRetrying}</dt><dd data-testid="trash-retrying-count" className="mt-1 font-medium tabular-nums">{numberFormat.format(summary.retryingCount)}</dd></div>
+                <div className="min-w-0"><dt className="text-slate-600 dark:text-slate-400">{text.trashRemainingBytes}</dt><dd data-testid="trash-remaining-bytes" className="mt-1 font-semibold tabular-nums">{readableSize(summary.remainingBytes, locale)}</dd></div>
+                <div><dt className="text-slate-600 dark:text-slate-400">{text.trashAvailable}</dt><dd data-testid="trash-available-count" className="mt-1 font-medium tabular-nums">{numberFormat.format(summary.recoverableCount)}</dd></div>
+                <div><dt className="text-slate-600 dark:text-slate-400">{text.trashPurging}</dt><dd data-testid="trash-purging-count" className="mt-1 font-medium tabular-nums">{numberFormat.format(summary.purgingCount)}</dd></div>
+                <div><dt className="text-slate-600 dark:text-slate-400">{text.trashRetrying}</dt><dd data-testid="trash-retrying-count" className="mt-1 font-medium tabular-nums">{numberFormat.format(summary.retryingCount)}</dd></div>
               </dl>
             </section>
           )}
-          <p role="status" data-testid="trash-purge-notice" className={purgeNotice !== null ? 'rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-900' : 'sr-only'}>
+          <p role="status" data-testid="trash-purge-notice" className={purgeNotice !== null ? 'rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-900 dark:bg-primary-950/60 dark:text-primary-200' : 'sr-only'}>
             {purgeNotice !== null && (purgeNotice > 0 ? text.purgeAccepted(numberFormat.format(purgeNotice)) : text.purgeNoNew)}
           </p>
-          <div className={notice ? 'space-y-1 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900' : 'sr-only'}>
+          <div className={notice ? 'space-y-1 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200' : 'sr-only'}>
             <p role="status" data-testid="trash-status" className="[overflow-wrap:anywhere]">
               {notice ? <>{notice.message} <strong data-testid="trash-restored-name">{notice.name}</strong>{notice.renamed && <> {text.renamedOnRestore}</>}</> : query.isFetching ? text.updating : ''}
             </p>
             {notice && <Link data-testid="trash-restore-destination" href={driveHref(notice.destinationId ?? 'root')} prefetch={false} className="inline-flex min-h-11 max-w-full items-center rounded-sm font-medium underline [overflow-wrap:anywhere]">{destinationName ?? text.openRestoreDestination}</Link>}
           </div>
           {error && (
-            <div data-testid="trash-error" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">
+            <div data-testid="trash-error" role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200">
               <p>{localizedError(error, text)}</p>
               <button data-testid="trash-retry" type="button" className="button button-secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>
             </div>
@@ -212,14 +212,14 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
           {(query.isPending || shouldMovePage) && !expired && !error && (
             <div data-testid="trash-loading" role="status" aria-busy="true" className="space-y-2">
               <span className="sr-only">{text.loading}</span>
-              {Array.from({ length: 3 }, (_, index) => <div key={index} aria-hidden="true" className="h-[4.5rem] rounded-lg border border-gray-100 bg-gray-100 motion-safe:animate-pulse" />)}
+              {Array.from({ length: 3 }, (_, index) => <div key={index} aria-hidden="true" className="h-[4.5rem] rounded-lg border border-slate-200 bg-slate-100 motion-safe:animate-pulse dark:border-slate-800 dark:bg-slate-800" />)}
             </div>
           )}
           {data && !shouldMovePage && items.length === 0 && !isPlaceholderData && !error && (
             <div data-testid="trash-empty" className="flex flex-col items-center gap-3 py-14 text-center sm:py-20">
-              <div className="flex h-32 w-32 items-center justify-center rounded-full bg-gray-100 sm:h-40 sm:w-40"><TrashIcon aria-hidden="true" className="h-16 w-16 text-gray-400" /></div>
-              <h2 className="mt-2 text-lg font-semibold">{text.noTrashItems}</h2>
-              <p className="text-sm text-gray-600">{text.noTrashDescription}</p>
+              <div className="flex h-32 w-32 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 sm:h-40 sm:w-40"><TrashIcon aria-hidden="true" className="h-16 w-16 text-slate-400" /></div>
+              <h2 className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{text.noTrashItems}</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">{text.noTrashDescription}</p>
               <Link href="/drive" prefetch={false} className="button button-secondary">{text.backToDrive}</Link>
             </div>
           )}
@@ -238,13 +238,13 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
                     </span>
                     <div className="min-w-0">
                       <p className="text-sm font-medium [overflow-wrap:anywhere] sm:line-clamp-2" title={name}>{name}</p>
-                      <p className="mt-0.5 text-xs tabular-nums text-gray-600">
+                      <p className="mt-0.5 text-xs tabular-nums text-slate-600 dark:text-slate-400">
                         {item.kind === 'folder' ? text.folder : readableSize(item.size, locale)} <span aria-hidden="true">·</span> <span className="sr-only sm:not-sr-only">{text.trashedOn} </span><time dateTime={item.trashedAt}>{dateFormat.format(new Date(item.trashedAt))}</time>
                       </p>
-                      <p className="mt-1 text-xs text-gray-700" data-testid="trash-item-status">{status}</p>
+                      <p className="mt-1 text-xs text-slate-700 dark:text-slate-300" data-testid="trash-item-status">{status}</p>
                       {item.deleteAfter ? (
-                        <p className="mt-0.5 text-xs text-gray-600">{text.trashExpires} <time data-testid="trash-expiry" dateTime={item.deleteAfter}>{dateFormat.format(new Date(item.deleteAfter))}</time> ({text.trashTimeZone})</p>
-                      ) : <p className="mt-0.5 text-xs text-gray-600">{text.trashExpiryUnset}</p>}
+                        <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">{text.trashExpires} <time data-testid="trash-expiry" dateTime={item.deleteAfter}>{dateFormat.format(new Date(item.deleteAfter))}</time> ({text.trashTimeZone})</p>
+                      ) : <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">{text.trashExpiryUnset}</p>}
                     </div>
                     {available && canAct && (
                       <div className="col-span-2 flex flex-wrap justify-end gap-2 sm:col-span-1">
@@ -256,22 +256,22 @@ export function TrashScreen({ initialUser }: { initialUser: User }) {
                           <ArrowUturnLeftIcon aria-hidden="true" className="h-4 w-4" />
                           {restoring === key ? text.restoring : text.restore}
                         </button>
-                        <button type="button" data-testid="trash-purge-open" className="button button-secondary min-h-11 text-red-800" disabled={Boolean(restoring)} aria-label={`${text.deletePermanently} ${name}`} onClick={(event) => {
+                        <button type="button" data-testid="trash-purge-open" className="button button-secondary min-h-11 text-red-800 dark:text-red-300" disabled={Boolean(restoring)} aria-label={`${text.deletePermanently} ${name}`} onClick={(event) => {
                           setPurgeNotice(null);
                           setNotice(null);
                           setPurgeIntent({ kind: 'single', item, trigger: event.currentTarget });
                         }}>{text.deletePermanently}</button>
                       </div>
                     )}
-                    {restoreError?.id === key && <p role="alert" className="col-span-2 text-sm text-red-800 sm:col-span-3">{restoreError.message}</p>}
+                    {restoreError?.id === key && <p role="alert" className="col-span-2 text-sm text-red-800 dark:text-red-300 sm:col-span-3">{restoreError.message}</p>}
                   </li>
                 );
               })}
             </ul>
           )}
           {data && totalPages > 1 && !shouldMovePage && (
-            <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-4 text-sm">
-              <p className="text-gray-600">{text.page} {page} / {totalPages} · {new Intl.NumberFormat(locale).format(data.pagination.total)} {text.items}</p>
+            <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-4 text-sm dark:border-slate-800">
+              <p className="text-slate-600 dark:text-slate-400">{text.page} {page} / {totalPages} · {new Intl.NumberFormat(locale).format(data.pagination.total)} {text.items}</p>
               <div className="flex gap-1">
                 {page > 1 && <Link href={trashHref(page - 1)} prefetch={false} data-testid="trash-pagination-prev" aria-label={text.previousPage} className="icon-button"><ChevronLeftIcon aria-hidden="true" className="h-5 w-5" /></Link>}
                 {page < totalPages && <Link href={trashHref(page + 1)} prefetch={false} data-testid="trash-pagination-next" aria-label={text.nextPage} className="icon-button"><ChevronRightIcon aria-hidden="true" className="h-5 w-5" /></Link>}

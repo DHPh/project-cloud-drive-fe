@@ -164,7 +164,7 @@ function NavigationLinks({ active, homeHref, admin, mobile = false, onNavigate }
                 aria-current={id === active ? 'page' : undefined}
                 className={`group flex min-h-10 items-start gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium leading-snug transition-colors ${
                   id === active
-                    ? 'bg-primary-50 text-primary-800 dark:bg-primary-950/70 dark:text-primary-200'
+                    ? 'bg-primary-50 text-primary-800 dark:bg-primary-500/20 dark:text-primary-200'
                     : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
                 }`}
               >
@@ -302,17 +302,65 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
         {text.skip}
       </a>
 
-      <header className="sticky top-0 z-30 flex h-16 min-w-0 items-center gap-2 border-b border-slate-200 bg-slate-50/95 px-2.5 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/95 sm:gap-3 sm:px-4 lg:col-span-2">
-        <button type="button" ref={toggleNavigation} className="icon-button lg:hidden" aria-label={text.openNavigation} onClick={() => setNavigationOpen(true)}>
-          <Bars3Icon className="h-6 w-6" />
-        </button>
+      <header className="sticky top-0 z-30 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 border-b border-slate-200 bg-slate-50/95 px-3 py-2 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/95 sm:h-16 sm:flex-nowrap sm:gap-3 sm:px-4 sm:py-0 lg:col-span-2">
+        <div className="order-1 flex shrink-0 items-center gap-1.5 sm:gap-2.5 lg:w-[14rem]">
+          <button type="button" ref={toggleNavigation} className="icon-button h-9 w-9 sm:h-10 sm:w-10 lg:hidden" aria-label={text.openNavigation} onClick={() => setNavigationOpen(true)}>
+            <Bars3Icon className="h-6 w-6" />
+          </button>
 
-        <Link href={homeHref} prefetch={false} className="hidden shrink-0 items-center gap-2.5 rounded-md text-slate-900 dark:text-slate-100 sm:flex lg:w-[14rem]">
-          <BrandIcon />
-          <span className="text-lg font-bold tracking-tight">{text.app}</span>
-        </Link>
+          <Link href={homeHref} prefetch={false} className="flex shrink-0 items-center gap-2 rounded-md text-slate-900 dark:text-slate-100">
+            <BrandIcon />
+            <span className="text-base font-bold tracking-tight sm:text-lg">{text.app}</span>
+          </Link>
+        </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="order-2 ml-auto flex shrink-0 items-center gap-1 sm:order-3 sm:ml-0 sm:gap-1.5">
+          <button
+            ref={shortcutTrigger}
+            type="button"
+            onClick={openShortcuts}
+            className="icon-button hidden sm:inline-flex"
+            aria-label={vi ? 'Phím tắt & Macro' : 'Keyboard shortcuts'}
+            title={vi ? 'Phím tắt (?)' : 'Shortcuts (?)'}
+          >
+            <span className="font-mono text-sm font-bold">?</span>
+          </button>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="icon-button h-9 w-9 sm:h-10 sm:w-10"
+            aria-label={theme === 'dark' ? (vi ? 'Chuyển giao diện sáng' : 'Switch to light mode') : (vi ? 'Chuyển giao diện tối' : 'Switch to dark mode')}
+            title={theme === 'dark' ? (vi ? 'Giao diện sáng' : 'Light mode') : (vi ? 'Giao diện tối' : 'Dark mode')}
+          >
+            {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+          </button>
+          <LanguageSwitch />
+          <button
+            ref={profileTrigger}
+            type="button"
+            onClick={toggleProfileMenu}
+            aria-expanded={Boolean(profileMenuPos)}
+            aria-haspopup="menu"
+            aria-label={`${initials} — ${text.account}: ${user.name || user.email}`}
+            title={user.name || user.email}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-600 to-indigo-600 text-xs font-bold text-white shadow-sm ring-2 ring-white hover:opacity-95 dark:ring-slate-900 sm:h-9 sm:w-9"
+          >
+            <span>{initials}</span>
+          </button>
+          <button
+            type="button"
+            data-testid="logout"
+            disabled={signingOut}
+            onClick={onSignOut}
+            className="icon-button h-9 w-9 shrink-0 sm:h-10 sm:w-10"
+            aria-label={signingOut ? text.signOutPending : text.signOut}
+            title={text.signOut}
+          >
+            <ArrowLeftOnRectangleIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="order-3 flex w-full min-w-0 items-center gap-2 sm:order-2 sm:w-auto sm:flex-1">
           {drive ? (
             <>
               <DriveSearch key={drive.folder} search={drive.search} onSearch={drive.onSearch} />
@@ -337,52 +385,6 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
               <kbd className="kbd-chip hidden sm:inline-flex">Ctrl+K</kbd>
             </button>
           )}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-          <button
-            ref={shortcutTrigger}
-            type="button"
-            onClick={openShortcuts}
-            className="icon-button hidden sm:inline-flex"
-            aria-label={vi ? 'Phím tắt & Macro' : 'Keyboard shortcuts'}
-            title={vi ? 'Phím tắt (?)' : 'Shortcuts (?)'}
-          >
-            <span className="font-mono text-sm font-bold">?</span>
-          </button>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="icon-button"
-            aria-label={theme === 'dark' ? (vi ? 'Chuyển giao diện sáng' : 'Switch to light mode') : (vi ? 'Chuyển giao diện tối' : 'Switch to dark mode')}
-            title={theme === 'dark' ? (vi ? 'Giao diện sáng' : 'Light mode') : (vi ? 'Giao diện tối' : 'Dark mode')}
-          >
-            {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-          </button>
-          <LanguageSwitch />
-          <button
-            ref={profileTrigger}
-            type="button"
-            onClick={toggleProfileMenu}
-            aria-expanded={Boolean(profileMenuPos)}
-            aria-haspopup="menu"
-            aria-label={`${initials} — ${text.account}: ${user.name || user.email}`}
-            title={user.name || user.email}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-600 to-indigo-600 text-xs font-bold text-white shadow-sm ring-2 ring-white hover:opacity-95 dark:ring-slate-900"
-          >
-            <span>{initials}</span>
-          </button>
-          <button
-            type="button"
-            data-testid="logout"
-            disabled={signingOut}
-            onClick={onSignOut}
-            className="icon-button shrink-0"
-            aria-label={signingOut ? text.signOutPending : text.signOut}
-            title={text.signOut}
-          >
-            <ArrowLeftOnRectangleIcon className="h-5 w-5" />
-          </button>
         </div>
       </header>
 

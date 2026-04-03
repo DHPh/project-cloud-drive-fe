@@ -95,12 +95,12 @@ export function AdminScreen({ initialUser }: { initialUser: User }) {
     <>
       <DriveLayout user={user} section="admin" signingOut={signingOut} signOutError={signOutError} onSignOut={() => void signOut()}>
         <div className="mx-auto max-w-screen-2xl space-y-5 p-4 sm:p-6 lg:p-8">
-          <h1 id="admin-heading" ref={heading} tabIndex={-1} className="flex w-fit items-center gap-2 rounded-md px-1 text-lg font-semibold"><ShieldCheckIcon aria-hidden="true" className="h-6 w-6 text-gray-600" />{text.admin}</h1>
-          <nav aria-label={text.admin} className="flex w-fit flex-wrap gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
+          <h1 id="admin-heading" ref={heading} tabIndex={-1} className="flex w-fit items-center gap-2 rounded-md px-1 text-lg font-semibold text-slate-900 dark:text-slate-100"><ShieldCheckIcon aria-hidden="true" className="h-6 w-6 text-slate-600 dark:text-slate-400" />{text.admin}</h1>
+          <nav aria-label={text.admin} className="flex w-fit flex-wrap gap-1 rounded-xl border border-slate-200 bg-slate-100/80 p-1 dark:border-slate-800 dark:bg-slate-900">
             {(['users', 'invites', 'audit'] as const).map((tab) => (
-              <Link key={tab} href={adminHref({ tab, q: '', status: 'all', page: 1 })} aria-current={filters.tab === tab ? 'page' : undefined} prefetch={false} data-testid={`admin-tab-${tab}`} className={`button min-h-11 ${tab === filters.tab ? 'bg-primary-100 text-primary-900' : 'text-gray-700 hover:bg-white'}`}>{tabs[tab]}</Link>
+              <Link key={tab} href={adminHref({ tab, q: '', status: 'all', page: 1 })} aria-current={filters.tab === tab ? 'page' : undefined} prefetch={false} data-testid={`admin-tab-${tab}`} className={`button min-h-11 ${tab === filters.tab ? 'bg-primary-100 text-primary-900 dark:bg-primary-500/20 dark:text-primary-200' : 'text-slate-700 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800'}`}>{tabs[tab]}</Link>
             ))}
-            <Link href="/admin/boards" prefetch={false} data-testid="admin-boards-link" className="button min-h-11 text-gray-700 hover:bg-white">{locale === 'vi' ? 'Kiểm duyệt bảng' : 'Board moderation'}</Link>
+            <Link href="/admin/boards" prefetch={false} data-testid="admin-boards-link" className="button min-h-11 text-slate-700 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800">{locale === 'vi' ? 'Kiểm duyệt bảng' : 'Board moderation'}</Link>
           </nav>
           {filters.tab === 'users' && <DriveSearch search={filters.q} onSearch={changeSearch} label={text.adminSearch} testId="admin-user-search" />}
           {filters.tab === 'invites' && (
@@ -113,20 +113,20 @@ export function AdminScreen({ initialUser }: { initialUser: User }) {
               {enabled && <button id="admin-invite-create" type="button" data-testid="admin-invite-open" className="button button-primary min-h-11" onClick={(event) => open({ kind: 'invite', trigger: event.currentTarget })}>{text.createInvite}</button>}
             </div>
           )}
-          <p role="status" data-testid="admin-notice" className={notice ? 'rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900' : 'sr-only'}>{notice}</p>
-          {enabled && query.isPending && <p role="status" className="panel p-4 text-sm text-gray-600">{text.loading}</p>}
-          {enabled && error && <div data-testid="admin-error" role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-800">
+          <p role="status" data-testid="admin-notice" className={notice ? 'rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200' : 'sr-only'}>{notice}</p>
+          {enabled && query.isPending && <p role="status" className="panel p-4 text-sm text-slate-600 dark:text-slate-400">{text.loading}</p>}
+          {enabled && error && <div data-testid="admin-error" role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/50 dark:text-red-200">
             <p>{localizedError(error, text)}</p><button type="button" className="button button-secondary min-h-11" disabled={query.isFetching} onClick={() => void query.refetch()}>{text.retry}</button>
           </div>}
-          {data?.data.items.length === 0 && <p role="status" className="panel p-4 text-sm text-gray-600">{text.adminEmpty}</p>}
+          {data?.data.items.length === 0 && <p role="status" className="panel p-4 text-sm text-slate-600 dark:text-slate-400">{text.adminEmpty}</p>}
           {enabled && !error && filters.tab === 'users' && users.data && (
             <ul className="space-y-2" aria-label={text.users}>
               {users.data.data.items.map((account) => (
                 <li key={account.id} data-testid="admin-user-row" data-account-id={account.id} className="panel space-y-2 p-3 sm:flex sm:justify-between sm:gap-3 sm:space-y-0 sm:p-4">
                   <div className="min-w-0 space-y-1 text-sm [overflow-wrap:anywhere]">
-                    <p className="font-semibold">{account.name}</p><p>{account.email}</p>
-                    <p className="text-gray-700">{account.role === 'admin' ? text.roleAdmin : text.roleUser} · {account.disabled ? text.accountDisabled : text.accountEnabled}</p>
-                    <p className="text-gray-700">{text.storageUsed} {readableSize(account.usedBytes, locale)} / {readableSize(account.quotaBytes, locale)}</p>
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">{account.name}</p><p className="text-slate-700 dark:text-slate-200">{account.email}</p>
+                    <p className="text-slate-600 dark:text-slate-300">{account.role === 'admin' ? text.roleAdmin : text.roleUser} · {account.disabled ? text.accountDisabled : text.accountEnabled}</p>
+                    <p className="text-slate-600 dark:text-slate-300">{text.storageUsed} {readableSize(account.usedBytes, locale)} / {readableSize(account.quotaBytes, locale)}</p>
                   </div>
                   <div className="flex flex-wrap items-start gap-2">
                     <button id={`admin-user-edit-${account.id}`} type="button" data-testid="admin-user-edit" className="button button-secondary min-h-11" onClick={(event) => open({ kind: 'user', account, trigger: event.currentTarget })}>{text.editAdminAccount}</button>
@@ -141,10 +141,10 @@ export function AdminScreen({ initialUser }: { initialUser: User }) {
               {invites.data.data.items.map((invite) => (
                 <li key={invite.id} data-testid="admin-invite-row" data-invite-id={invite.id} data-invite-status={invite.status} className="panel space-y-2 p-3 sm:flex sm:justify-between sm:gap-3 sm:space-y-0 sm:p-4">
                   <div className="min-w-0 space-y-1 text-sm [overflow-wrap:anywhere]">
-                    <p className="font-semibold">{invite.email}</p><p>{statuses[invite.status]}</p>
-                    <p className="text-gray-700">{text.expiresAt} <time dateTime={invite.expiresAt}>{dateFormat.format(new Date(invite.expiresAt))}</time> ({text.vietnamTime})</p>
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">{invite.email}</p><p className="text-slate-700 dark:text-slate-200">{statuses[invite.status]}</p>
+                    <p className="text-slate-600 dark:text-slate-300">{text.expiresAt} <time dateTime={invite.expiresAt}>{dateFormat.format(new Date(invite.expiresAt))}</time> ({text.vietnamTime})</p>
                   </div>
-                  {invite.status === 'active' && <button id={`admin-invite-revoke-${invite.id}`} type="button" data-testid="admin-invite-revoke" className="button button-secondary min-h-11 self-start text-red-800" onClick={(event) => open({ kind: 'revoke', invite, trigger: event.currentTarget })}>{text.revokeInvite}</button>}
+                  {invite.status === 'active' && <button id={`admin-invite-revoke-${invite.id}`} type="button" data-testid="admin-invite-revoke" className="button button-secondary min-h-11 self-start text-red-800 dark:text-red-300" onClick={(event) => open({ kind: 'revoke', invite, trigger: event.currentTarget })}>{text.revokeInvite}</button>}
                 </li>
               ))}
             </ul>
@@ -153,16 +153,16 @@ export function AdminScreen({ initialUser }: { initialUser: User }) {
             <ul className="space-y-2" aria-label={text.audit}>
               {audit.data.data.items.map((entry) => (
                 <li key={entry.id} data-testid="admin-audit-row" data-action={entry.action} className="panel space-y-1 p-3 text-sm [overflow-wrap:anywhere] sm:p-4">
-                  <p className="font-semibold">{actionNames[entry.action] ?? entry.action}</p>
-                  <p>{text.auditActor} {entry.actorEmail}</p>
-                  {entry.targetEmail && <p>{text.auditTarget} {entry.targetEmail}</p>}
-                  <p className="text-gray-700"><time dateTime={entry.createdAt}>{dateFormat.format(new Date(entry.createdAt))}</time> ({text.vietnamTime})</p>
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{actionNames[entry.action] ?? entry.action}</p>
+                  <p className="text-slate-700 dark:text-slate-200">{text.auditActor} {entry.actorEmail}</p>
+                  {entry.targetEmail && <p className="text-slate-700 dark:text-slate-200">{text.auditTarget} {entry.targetEmail}</p>}
+                  <p className="text-slate-600 dark:text-slate-300"><time dateTime={entry.createdAt}>{dateFormat.format(new Date(entry.createdAt))}</time> ({text.vietnamTime})</p>
                 </li>
               ))}
             </ul>
           )}
           {enabled && data && (totalPages > 1 || filters.page > 1) && (
-            <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-4 text-sm">
+            <nav aria-label={text.pagination} className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-4 text-sm dark:border-slate-800">
               <p>{text.page} {filters.page} / {Math.max(1, totalPages)}</p>
               <div className="flex gap-1">
                 {filters.page > 1 && <Link href={adminHref({ ...filters, page: Math.max(1, Math.min(totalPages, filters.page - 1)) })} prefetch={false} aria-label={text.previousPage} className="icon-button"><ChevronLeftIcon aria-hidden="true" className="h-5 w-5" /></Link>}
