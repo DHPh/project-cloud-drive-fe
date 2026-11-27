@@ -118,6 +118,9 @@ type Props = {
     onCreateFolder?: (trigger: HTMLElement | null) => void;
     onToggleView?: () => void;
   };
+  rightSidebar?: ReactNode;
+  rightSidebarOpen?: boolean;
+  onToggleRightSidebar?: () => void;
   signingOut: boolean;
   signOutError: string | null;
   onSignOut: () => void;
@@ -207,7 +210,19 @@ function NavigationLinks({ active, homeHref, admin, mobile = false, onNavigate }
   );
 }
 
-export function DriveLayout({ user, drive, homeHref = '/drive', section = drive ? 'drive' : 'trash', signingOut, signOutError, onSignOut, children }: Props) {
+export function DriveLayout({
+  user,
+  drive,
+  homeHref = '/drive',
+  section = drive ? 'drive' : 'trash',
+  rightSidebar,
+  rightSidebarOpen = false,
+  onToggleRightSidebar,
+  signingOut,
+  signOutError,
+  onSignOut,
+  children,
+}: Props) {
   const { locale, setLocale, text } = useLocale();
   const { theme, setTheme, toggleTheme } = useTheme();
   const vi = locale === 'vi';
@@ -217,6 +232,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsTrigger, setShortcutsTrigger] = useState<HTMLElement | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
 
   const toggleNavigation = useRef<HTMLButtonElement>(null);
   const newTrigger = useRef<HTMLButtonElement>(null);
@@ -224,6 +240,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
   const profileTrigger = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const shortcutTrigger = useRef<HTMLButtonElement>(null);
+  const signOutCancelRef = useRef<HTMLButtonElement>(null);
 
   const mainId = `${section}-main`;
   const showDriveActions = Boolean(drive?.onCreateFolder || drive?.onUpload);
@@ -321,7 +338,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
   }
 
   return (
-    <div className="safe-top min-h-dvh bg-surface-rail lg:grid lg:min-h-dvh lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:grid-rows-[3.5rem_1fr]">
+    <div className="safe-top min-h-dvh bg-surface-rail lg:grid lg:h-dvh lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:grid-rows-[3.5rem_minmax(0,1fr)] lg:overflow-hidden">
       <a href={`#${mainId}`} className="sr-only z-[60] focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:rounded focus:bg-surface-elevated focus:px-4 focus:py-2 focus:text-ink">
         {text.skip}
       </a>
@@ -349,6 +366,22 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
           >
             <QuestionMarkCircleIcon className="h-[18px] w-[18px]" />
           </button>
+          {onToggleRightSidebar && (
+            <button
+              type="button"
+              data-testid="inspector-toggle"
+              onClick={onToggleRightSidebar}
+              aria-pressed={rightSidebarOpen}
+              aria-label={text.toggleInspector}
+              title={`${text.toggleInspector} (I)`}
+              className={`icon-button ${rightSidebarOpen ? 'bg-accent-soft text-accent-text hover:bg-accent-soft hover:text-accent-text' : ''}`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-[18px] w-[18px]" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="M15 4v16" />
+              </svg>
+            </button>
+          )}
           <button
             type="button"
             onClick={toggleTheme}
@@ -362,6 +395,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
           <button
             ref={profileTrigger}
             type="button"
+            data-testid="profile-menu-trigger"
             onClick={toggleProfileMenu}
             aria-expanded={Boolean(profileMenuPos)}
             aria-haspopup="dialog"
@@ -374,20 +408,6 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
             </span>{' '}
             <span className="hidden max-w-[110px] truncate text-[12.5px] font-semibold sm:inline">{displayName}</span>
             <ChevronDownIcon aria-hidden="true" className="hidden h-3.5 w-3.5 text-ink-muted sm:inline" />
-          </button>
-
-          <span aria-hidden="true" className="mx-0.5 hidden h-5 w-px bg-line sm:inline-block" />
-
-          <button
-            type="button"
-            data-testid="logout"
-            disabled={signingOut}
-            onClick={onSignOut}
-            className="icon-button shrink-0 hover:bg-danger-soft hover:text-danger"
-            aria-label={signingOut ? text.signOutPending : text.signOut}
-            title={text.signOut}
-          >
-            <ArrowLeftOnRectangleIcon className="h-[18px] w-[18px]" />
           </button>
         </div>
 
@@ -411,9 +431,9 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
         </div>
       </header>
 
-      <aside className={`min-w-0 overflow-x-hidden overflow-y-auto border-r border-line bg-surface-rail px-3 py-3.5 ${showDriveActions ? '' : 'hidden lg:block'}`}>
+      <aside className={`ux-scroll-contain min-h-0 min-w-0 border-b border-line bg-surface-rail px-3 py-3 lg:flex lg:h-full lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:border-b-0 lg:border-r lg:py-3.5 ${showDriveActions ? 'block' : 'hidden lg:flex'}`}>
         {drive?.onCreateFolder && (
-          <div className="mb-4">
+          <div className="shrink-0 lg:mb-4">
             <button
               ref={newTrigger}
               type="button"
@@ -435,17 +455,21 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
           <button
             type="button"
             data-testid="upload-open"
-            className="button button-primary mb-4 min-h-10 w-full"
+            className="button button-primary min-h-10 w-full shrink-0 lg:mb-4"
             onClick={(event) => drive.onUpload?.(event.currentTarget)}
           >
             <ArrowUpTrayIcon aria-hidden="true" className="h-5 w-5" />
             {text.upload}
           </button>
         )}
-        <nav aria-label={text.navigation} className="hidden lg:block">
-          <NavigationLinks active={section} homeHref={homeHref} admin={user.role === 'admin'} />
-          <StorageQuotaWidget userId={user.id} />
-        </nav>
+        <div className="hidden lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+          <nav aria-label={text.navigation} className="flex-1">
+            <NavigationLinks active={section} homeHref={homeHref} admin={user.role === 'admin'} />
+          </nav>
+          <div className="mt-auto shrink-0 pt-4">
+            <StorageQuotaWidget userId={user.id} />
+          </div>
+        </div>
       </aside>
 
       <Overlay
@@ -455,20 +479,27 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
         onDismiss={() => setNavigationOpen(false)}
         restoreFallback={() => toggleNavigation.current?.focus()}
       >
-        <nav aria-label={text.navigation} className="overflow-y-auto ux-scroll-contain p-4">
-          <NavigationLinks active={section} homeHref={homeHref} admin={user.role === 'admin'} mobile onNavigate={() => setNavigationOpen(false)} />
-          <StorageQuotaWidget userId={user.id} />
-        </nav>
+        <div className="ux-scroll-contain flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+          <nav aria-label={text.navigation} className="flex-1">
+            <NavigationLinks active={section} homeHref={homeHref} admin={user.role === 'admin'} mobile onNavigate={() => setNavigationOpen(false)} />
+          </nav>
+          <div className="mt-auto pt-4">
+            <StorageQuotaWidget userId={user.id} />
+          </div>
+        </div>
       </Overlay>
 
-      <main id={mainId} tabIndex={-1} className="safe-bottom min-w-0 bg-surface-canvas lg:min-h-[calc(100dvh-3.5rem)]">
-        {signOutError && (
-          <p role="alert" className="m-4 rounded-lg border border-red-200 bg-danger-soft p-3 text-sm text-danger dark:border-red-900">
-            {signOutError}
-          </p>
-        )}
-        {children}
-      </main>
+      <div className="flex min-h-0 min-w-0 bg-surface-canvas lg:overflow-hidden">
+        <main id={mainId} tabIndex={-1} className="safe-bottom ux-scroll-contain min-w-0 flex-1 bg-surface-canvas lg:overflow-y-auto">
+          {signOutError && (
+            <p role="alert" className="m-4 rounded-lg border border-red-200 bg-danger-soft p-3 text-sm text-danger dark:border-red-900">
+              {signOutError}
+            </p>
+          )}
+          {children}
+        </main>
+        {rightSidebar}
+      </div>
 
       {newMenuPos && typeof document !== 'undefined' && createPortal(
         <div
@@ -589,8 +620,12 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
 
           <button
             type="button"
+            data-testid="logout"
             disabled={signingOut}
-            onClick={() => { setProfileMenuPos(null); onSignOut(); }}
+            onClick={() => {
+              setProfileMenuPos(null);
+              setSignOutConfirmOpen(true);
+            }}
             className="flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-left text-[13px] font-medium text-danger hover:bg-danger-soft"
           >
             <ArrowLeftOnRectangleIcon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -598,6 +633,47 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
           </button>
         </div>,
         document.body,
+      )}
+
+      {signOutConfirmOpen && (
+        <Overlay
+          open={signOutConfirmOpen}
+          testId="logout-confirm-dialog"
+          title={text.signOutConfirmTitle}
+          description={text.signOutConfirmDescription}
+          initialFocus={signOutCancelRef}
+          restoreFallback={() => profileTrigger.current?.focus()}
+          onDismiss={signingOut ? undefined : () => setSignOutConfirmOpen(false)}
+        >
+          {signOutError && (
+            <div className="px-5 pt-4 sm:px-6">
+              <p role="alert" className="rounded-lg border border-red-200 bg-danger-soft px-3 py-2 text-sm text-danger dark:border-red-900">
+                {signOutError}
+              </p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 border-t border-line px-5 py-4 sm:px-6">
+            <button
+              ref={signOutCancelRef}
+              type="button"
+              data-testid="logout-cancel"
+              className="button button-secondary min-h-10"
+              disabled={signingOut}
+              onClick={() => setSignOutConfirmOpen(false)}
+            >
+              {text.cancel}
+            </button>
+            <button
+              type="button"
+              data-testid="logout-confirm"
+              className="button button-danger min-h-10"
+              disabled={signingOut}
+              onClick={onSignOut}
+            >
+              {signingOut ? text.signOutPending : text.signOut}
+            </button>
+          </div>
+        </Overlay>
       )}
 
       <CommandPalette
@@ -609,6 +685,7 @@ export function DriveLayout({ user, drive, homeHref = '/drive', section = drive 
         onCreateFolder={drive?.onCreateFolder ? () => drive.onCreateFolder?.(newTrigger.current) : undefined}
         onUpload={drive?.onUpload ? () => drive.onUpload?.(newTrigger.current) : undefined}
         onToggleView={drive?.onToggleView}
+        onToggleInspector={onToggleRightSidebar}
       />
 
       <ShortcutsDialog

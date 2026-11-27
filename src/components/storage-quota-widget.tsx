@@ -27,7 +27,7 @@ export function StorageQuotaWidget({ userId }: { userId: string }) {
   return (
     <section
       aria-label={text.accountStorage}
-      className="mt-4 rounded-[10px] border border-line bg-surface-canvas p-3 shadow-sm"
+      className="rounded-[10px] border border-line bg-surface-canvas p-3 shadow-sm"
     >
       <div className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold">
         <span className="text-ink">{text.storageUsed}</span>

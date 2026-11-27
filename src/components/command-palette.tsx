@@ -48,6 +48,7 @@ type Props = {
   onCreateFolder?: () => void;
   onUpload?: () => void;
   onToggleView?: () => void;
+  onToggleInspector?: () => void;
 };
 
 export function CommandPalette(props: Props) {
@@ -55,7 +56,7 @@ export function CommandPalette(props: Props) {
   return <CommandPaletteBody {...props} />;
 }
 
-function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCreateFolder, onUpload, onToggleView }: Props) {
+function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCreateFolder, onUpload, onToggleView, onToggleInspector }: Props) {
   const { locale, text } = useLocale();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
@@ -128,6 +129,17 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
             Icon: Squares2X2Icon,
             iconClasses: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
             run: () => { onDismiss(); onToggleView(); },
+          }]
+        : []),
+      ...(onToggleInspector
+        ? [{
+            id: 'cmd-toggle-inspector',
+            group: commandGroup,
+            label: text.toggleInspector,
+            hint: 'I',
+            Icon: Squares2X2Icon,
+            iconClasses: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+            run: () => { onDismiss(); onToggleInspector(); },
           }]
         : []),
       {
@@ -267,7 +279,7 @@ function CommandPaletteBody({ userId, isAdmin, onDismiss, onOpenShortcuts, onCre
         });
 
     return [...driveItems, ...commands];
-  }, [isAdmin, locale, onCreateFolder, onDismiss, onOpenShortcuts, onToggleView, onUpload, rawInput, router, searchEnabled, searchQuery.data, text, theme, toggleTheme, vi]);
+  }, [isAdmin, locale, onCreateFolder, onDismiss, onOpenShortcuts, onToggleInspector, onToggleView, onUpload, rawInput, router, searchEnabled, searchQuery.data, text, theme, toggleTheme, vi]);
 
   const safeIndex = entries.length > 0 ? Math.min(activeIndex, entries.length - 1) : 0;
 

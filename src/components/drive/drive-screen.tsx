@@ -4,7 +4,7 @@ import { ArrowUpTrayIcon, ChevronLeftIcon, ChevronRightIcon, FolderIcon, HomeIco
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ApiError, downloadUrl, listFolder, trashFile, trashFolder, type FileItem, type FolderItem, type FolderSummary, type User } from '@/lib/api';
 import { localizedError } from '@/lib/messages';
 import { driveHref, driveSearchHref, fileHref, pageNumber, type DriveView } from '@/lib/routes';
@@ -13,6 +13,7 @@ import { Overlay } from '../overlay';
 import { useLocale, useToast } from '../providers';
 import { QuickPreviewDialog } from '../quick-preview-dialog';
 import { DriveContextMenu, type ContextMenuState } from './drive-context-menu';
+import { DriveInspector } from './drive-inspector';
 import { DriveItems } from './drive-items';
 import { DriveLayout } from './drive-layout';
 import { FolderArchiveDownload } from './folder-archive-download';
@@ -55,6 +56,48 @@ export function DriveScreen({ initialUser }: { initialUser: User }) {
   );
 }
 
+type QuickTypeFilter = 'all' | 'folder' | 'image' | 'pdf' | 'doc';
+type QuickSort = 'default' | 'name' | 'updated' | 'size';
+
+const INSPECTOR_STORAGE_KEY = 'cloud_drive_inspector_open';
+const INSPECTOR_EVENT = 'cloud-drive-inspector-change';
+
+function subscribeInspector(callback: () => void) {
+  window.addEventListener('storage', callback);
+  window.addEventListener(INSPECTOR_EVENT, callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    window.removeEventListener(INSPECTOR_EVENT, callback);
+  };
+}
+
+function readInspectorOpen() {
+  try {
+    const stored = window.localStorage.getItem(INSPECTOR_STORAGE_KEY);
+    if (stored === '1') return true;
+    if (stored === '0') return false;
+    return window.innerWidth >= 1280;
+  } catch {
+    return false;
+  }
+}
+
+function isDocumentMime(mimeType: string) {
+  const normalized = mimeType.toLowerCase();
+  return (
+    normalized.startsWith('text/') ||
+    normalized.includes('document') ||
+    normalized.includes('spreadsheet') ||
+    normalized.includes('excel') ||
+    normalized.includes('csv') ||
+    normalized.includes('json') ||
+    normalized.includes('javascript') ||
+    normalized.includes('typescript') ||
+    normalized.includes('yaml') ||
+    normalized.includes('xml')
+  );
+}
+
 type FolderProps = { session: ReturnType<typeof useAccountSession>; folder: string; search: string; page: number; view: DriveView };
 
 function DriveFolder({ session, folder, search, page, view }: FolderProps) {
@@ -74,6 +117,22 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
   const [bulkTrashOpen, setBulkTrashOpen] = useState(false);
   const [bulkTrashPending, setBulkTrashPending] = useState(false);
   const [bulkTrashError, setBulkTrashError] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<QuickTypeFilter>('all');
+  const [sortBy, setSortBy] = useState<QuickSort>('default');
+  const inspectorOpen = useSyncExternalStore(subscribeInspector, readInspectorOpen, () => false);
+
+  const setInspectorOpen = useCallback((next: boolean) => {
+    try {
+      window.localStorage.setItem(INSPECTOR_STORAGE_KEY, next ? '1' : '0');
+    } catch {
+      // Ignore storage errors in restricted environments.
+    }
+    window.dispatchEvent(new Event(INSPECTOR_EVENT));
+  }, []);
+
+  const toggleInspector = useCallback(() => {
+    setInspectorOpen(!readInspectorOpen());
+  }, [setInspectorOpen]);
 
   const nextTrashFocus = useRef<string | null>(null);
   const nextMoveFocus = useRef<string | null>(null);
@@ -114,13 +173,39 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
   const sharedView = readOnly || folderEditor;
   const canUpload = canManage || folderEditor;
   const allItems = useMemo(() => data?.data.items ?? [], [data]);
-  const folders = useMemo(() => allItems.filter((item) => item.kind === 'folder'), [allItems]);
+  const folders = useMemo(() => allItems.filter((item): item is FolderSummary => item.kind === 'folder'), [allItems]);
   const files = useMemo(() => allItems.filter((item): item is FileItem => item.kind === 'file'), [allItems]);
+  const visibleFolders = useMemo(() => {
+    if (typeFilter !== 'all' && typeFilter !== 'folder') return [];
+    if (sortBy === 'default' || sortBy === 'size') return folders;
+    return [...folders].sort((a, b) => (
+      sortBy === 'updated'
+        ? Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
+        : a.name.localeCompare(b.name, locale)
+    ));
+  }, [folders, locale, sortBy, typeFilter]);
+  const visibleFiles = useMemo(() => {
+    if (typeFilter === 'folder') return [];
+    const filtered = files.filter((file) => {
+      if (typeFilter === 'image') return file.mimeType.toLowerCase().startsWith('image/');
+      if (typeFilter === 'pdf') return file.mimeType.toLowerCase().includes('pdf');
+      if (typeFilter === 'doc') return isDocumentMime(file.mimeType);
+      return true;
+    });
+    if (sortBy === 'default') return filtered;
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'updated') return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
+      if (sortBy === 'size') return b.size - a.size;
+      return a.originalName.localeCompare(b.originalName, locale);
+    });
+  }, [files, locale, sortBy, typeFilter]);
+  const selectedItems = useMemo(() => allItems.filter((entry) => selectedIds.has(entry.id)), [allItems, selectedIds]);
   const homeHref = driveHref('root', '', 1, view);
   const error = query.error && (!(query.error instanceof ApiError) || query.error.status !== 401) ? query.error : null;
   const empty = data && allItems.length === 0 && !query.isPlaceholderData;
+  const filterEmpty = Boolean(data && allItems.length > 0 && visibleFolders.length === 0 && visibleFiles.length === 0);
   const canGoNext = data && page < data.pagination.totalPages;
-  const singleSelectedItem = selectedIds.size === 1 ? allItems.find((entry) => selectedIds.has(entry.id)) ?? null : null;
+  const singleSelectedItem = selectedItems.length === 1 ? selectedItems[0] : null;
 
   const openRename = useCallback((file: FileItem, trigger: HTMLElement) => {
     setNotice(null);
@@ -245,6 +330,12 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
         return;
       }
 
+      if (lower === 'i' && !mod && !event.shiftKey && !event.altKey) {
+        event.preventDefault();
+        toggleInspector();
+        return;
+      }
+
       if (selectedIds.size === 0) return;
       const firstId = Array.from(selectedIds)[0];
       const selectedItem = allItems.find((entry) => entry.id === firstId);
@@ -283,7 +374,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
 
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [allItems, canManage, canUpload, expired, folderEditor, openFolderRename, openMove, openRename, openShare, openTrash, selectedIds, toggleView]);
+  }, [allItems, canManage, canUpload, expired, folderEditor, openFolderRename, openMove, openRename, openShare, openTrash, selectedIds, toggleInspector, toggleView]);
 
   async function refreshFolderLists() {
     await Promise.all([
@@ -412,6 +503,34 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
       signingOut={signingOut}
       signOutError={signOutError}
       onSignOut={() => void signOut()}
+      rightSidebarOpen={inspectorOpen}
+      onToggleRightSidebar={toggleInspector}
+      rightSidebar={
+        <DriveInspector
+          open={inspectorOpen}
+          onClose={() => setInspectorOpen(false)}
+          userId={user.id}
+          view={view}
+          folderName={data?.data.folder?.name ?? text.myDrive}
+          folderDescription={data?.data.folder?.description}
+          totalItems={data?.pagination.total ?? allItems.length}
+          selectedItems={selectedItems}
+          canManage={canManage}
+          canEditFiles={folderEditor}
+          expired={expired}
+          onExpired={onExpired}
+          onPreview={(file) => setPreviewFileId(file.id)}
+          onShare={openShare}
+          onRename={openRename}
+          onFolderRename={(target, trigger) => openFolderRename(target, trigger)}
+          onMove={openMove}
+          onTrash={openTrash}
+          onItemUpdated={() => {
+            void queryClient.invalidateQueries({ queryKey: ['drive', user.id] });
+            void queryClient.invalidateQueries({ queryKey: ['file', user.id] });
+          }}
+        />
+      }
       drive={{
         folder,
         search,
@@ -422,7 +541,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
       }}
     >
       <div
-        className="mx-auto max-w-screen-2xl space-y-5 p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-24"
+        className="mx-auto max-w-screen-2xl space-y-4 p-4 pb-24 sm:p-6 sm:pb-24"
         onContextMenu={(event) => {
           if (!canManage && !canUpload) return;
           if ((event.target as HTMLElement).closest('[data-testid="drive-item"]')) return;
@@ -431,18 +550,18 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
         }}
       >
         <h1 className="sr-only">{sharedView ? data?.data.folder?.name : text.myDrive}</h1>
-        <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2.5">
           <nav className="min-w-0" aria-label={text.breadcrumb}>
-            <ol className="flex flex-wrap items-center gap-1 text-sm font-medium text-slate-800 dark:text-slate-200 sm:text-base">
+            <ol className="flex flex-wrap items-center gap-1 text-sm font-medium text-ink sm:text-[15px]">
               {!sharedView && (folder === 'root' || canManage) && (
                 <li>
                   <Link
                     href={homeHref}
                     prefetch={false}
                     aria-current={folder === 'root' ? 'page' : undefined}
-                    className="flex min-h-10 items-center gap-1.5 rounded-lg px-2 py-1 text-base font-semibold text-ink hover:bg-surface-hover hover:text-accent-text sm:text-lg"
+                    className="flex min-h-9 items-center gap-1.5 rounded-lg px-2 py-1 font-semibold text-ink hover:bg-surface-hover hover:text-accent-text"
                   >
-                    <HomeIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-ink-muted" />
+                    <HomeIcon aria-hidden="true" className="h-[18px] w-[18px] shrink-0 text-ink-muted" />
                     {text.myDrive}
                   </Link>
                 </li>
@@ -451,12 +570,12 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
                 <li key={crumb.id} className="flex min-w-0 items-center gap-1">
                   {(!sharedView || index > 0) && <ChevronRightIcon aria-hidden="true" className="h-4 w-4 shrink-0 text-ink-muted" />}
                   {crumb.id === folder ? (
-                    <span aria-current="page" title={crumb.name} className="max-w-[11rem] truncate px-1 text-ink sm:max-w-sm">{crumb.name}</span>
+                    <span aria-current="page" title={crumb.name} className="max-w-[11rem] truncate px-1 font-semibold text-ink sm:max-w-sm">{crumb.name}</span>
                   ) : (
                     <Link
                       href={driveHref(crumb.id, '', 1, view)}
                       prefetch={false}
-                      className="max-w-[11rem] truncate rounded-lg px-2 py-1.5 text-ink-secondary hover:bg-surface-hover hover:text-ink sm:max-w-sm"
+                      className="max-w-[11rem] truncate rounded-lg px-2 py-1 text-ink-secondary hover:bg-surface-hover hover:text-ink sm:max-w-sm"
                       title={crumb.name}
                     >
                       {crumb.name}
@@ -467,55 +586,95 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
             </ol>
           </nav>
 
-          <div role="group" aria-label={text.display} className="flex shrink-0 rounded-lg border border-line bg-surface-subtle p-0.5">
-            <button
-              type="button"
-              aria-label={text.grid}
-              title={`${text.grid} (V)`}
-              aria-pressed={view === 'grid'}
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${view === 'grid' ? 'bg-surface-canvas text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
-              onClick={() => window.history.replaceState(null, '', driveHref(folder, search, page, 'grid'))}
-            >
-              <Squares2X2Icon className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              aria-label={text.list}
-              title={`${text.list} (V)`}
-              aria-pressed={view === 'list'}
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${view === 'list' ? 'bg-surface-canvas text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
-              onClick={() => window.history.replaceState(null, '', driveHref(folder, search, page, 'list'))}
-            >
-              <ListBulletIcon className="h-4 w-4" />
-            </button>
-          </div>
+          {(canManage || data?.data.folder) && (
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {data?.data.folder && <FolderArchiveDownload folder={data.data.folder} onExpired={onExpired} />}
+              {folderEditor && data?.data.folder && (
+                <button
+                  type="button"
+                  data-testid="folder-description-edit"
+                  className="button button-secondary min-h-9 px-3 text-xs sm:text-sm"
+                  onClick={(event) => { if (data.data.folder) openFolderRename(data.data.folder, event.currentTarget, true); }}
+                >
+                  {text.editFolderDescription}
+                </button>
+              )}
+              {canManage && (
+                <Link
+                  data-testid="global-drive-search-open"
+                  prefetch={false}
+                  href={driveSearchHref({ q: search, includeMetadata: false, type: 'all', sort: 'name', page: 1 })}
+                  className="button button-secondary min-h-9 px-3 text-xs sm:text-sm"
+                >
+                  {text.globalDriveSearch}
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
-        {(canManage || data?.data.folder) && (
-          <div className="flex min-w-0 flex-wrap items-start gap-2">
-            {canManage && (
-              <Link
-                data-testid="global-drive-search-open"
-                prefetch={false}
-                href={driveSearchHref({ q: search, includeMetadata: false, type: 'all', sort: 'name', page: 1 })}
-                className="button button-secondary min-h-10"
+        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-line pb-3.5">
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={text.filterType}>
+            {([
+              { id: 'all', label: text.allTypes },
+              { id: 'folder', label: text.folders },
+              { id: 'image', label: text.typeImage },
+              { id: 'pdf', label: text.typePdf },
+              { id: 'doc', label: text.typeDocument },
+            ] as const).map((pill) => (
+              <button
+                key={pill.id}
+                type="button"
+                aria-pressed={typeFilter === pill.id}
+                onClick={() => setTypeFilter(pill.id)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                  typeFilter === pill.id
+                    ? 'border-accent/30 bg-accent-soft font-semibold text-accent-text'
+                    : 'border-transparent bg-surface-subtle text-ink-secondary hover:bg-surface-hover hover:text-ink'
+                }`}
               >
-                {text.globalDriveSearch}
-              </Link>
-            )}
-            {data?.data.folder && <FolderArchiveDownload folder={data.data.folder} onExpired={onExpired} />}
-            {folderEditor && data?.data.folder && (
+                {pill.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label={text.sortResults}
+              value={sortBy}
+              onChange={(event) => setSortBy(event.currentTarget.value as QuickSort)}
+              className="h-8 rounded-lg border border-line bg-surface-canvas px-2.5 text-xs font-medium text-ink focus:border-accent"
+            >
+              <option value="default">{vi ? 'Mặc định' : 'Default order'}</option>
+              <option value="name">{vi ? 'Sắp xếp: Tên (A–Z)' : 'Sort: Name (A–Z)'}</option>
+              <option value="updated">{vi ? 'Sắp xếp: Mới cập nhật' : 'Sort: Recently updated'}</option>
+              <option value="size">{vi ? 'Sắp xếp: Kích thước' : 'Sort: Size'}</option>
+            </select>
+
+            <div role="group" aria-label={text.display} className="flex shrink-0 rounded-lg border border-line bg-surface-subtle p-0.5">
               <button
                 type="button"
-                data-testid="folder-description-edit"
-                className="button button-secondary min-h-10"
-                onClick={(event) => { if (data.data.folder) openFolderRename(data.data.folder, event.currentTarget, true); }}
+                aria-label={text.grid}
+                title={`${text.grid} (V)`}
+                aria-pressed={view === 'grid'}
+                className={`inline-flex h-7 w-8 items-center justify-center rounded-md transition-colors ${view === 'grid' ? 'bg-surface-canvas text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+                onClick={() => window.history.replaceState(null, '', driveHref(folder, search, page, 'grid'))}
               >
-                {text.editFolderDescription}
+                <Squares2X2Icon className="h-4 w-4" />
               </button>
-            )}
+              <button
+                type="button"
+                aria-label={text.list}
+                title={`${text.list} (V)`}
+                aria-pressed={view === 'list'}
+                className={`inline-flex h-7 w-8 items-center justify-center rounded-md transition-colors ${view === 'list' ? 'bg-surface-canvas text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+                onClick={() => window.history.replaceState(null, '', driveHref(folder, search, page, 'list'))}
+              >
+                <ListBulletIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-        )}
+        </div>
 
         {data?.data.folder?.description && (
           <p data-testid="drive-folder-description" className="max-w-3xl whitespace-pre-wrap rounded-lg bg-slate-100/80 px-3 py-2 text-sm text-slate-700 [overflow-wrap:anywhere] dark:bg-slate-800/70 dark:text-slate-300">
@@ -604,15 +763,27 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
               </div>
             )}
 
+            {filterEmpty && (
+              <div className="panel flex flex-col items-center gap-3 px-6 py-10 text-center">
+                <p className="text-sm font-semibold text-ink">
+                  {vi ? 'Không có mục phù hợp bộ lọc loại trên trang này.' : 'No items match this type filter on this page.'}
+                </p>
+                <button type="button" className="button button-secondary min-h-9" onClick={() => setTypeFilter('all')}>
+                  {text.allTypes}
+                </button>
+              </div>
+            )}
+
             <DriveItems
               title={text.folders}
-              items={folders}
+              items={visibleFolders}
               view={view}
               canManage={canManage}
               canEditFiles={folderEditor}
               selectedIds={selectedIds}
               onSelect={handleSelectItem}
               onToggleCheck={handleToggleCheck}
+              onOpenFolder={(targetId) => router.push(driveHref(targetId, '', 1, view))}
               onContextMenu={(item, event) => {
                 event.preventDefault();
                 setSelectedIds(new Set([item.id]));
@@ -626,7 +797,7 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
             />
             <DriveItems
               title={text.files}
-              items={files}
+              items={visibleFiles}
               view={view}
               canManage={canManage}
               canEditFiles={folderEditor}
@@ -835,7 +1006,10 @@ function DriveFolder({ session, folder, search, page, view }: FolderProps) {
           trigger={dialog.trigger}
           userId={user.id}
           suspended={expired}
-          onDismiss={() => setDialog(null)}
+          onDismiss={() => {
+            setDialog(null);
+            void queryClient.invalidateQueries({ queryKey: ['inspector-shares', user.id] });
+          }}
           onExpired={onExpired}
         />
       )}

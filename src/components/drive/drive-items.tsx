@@ -32,6 +32,7 @@ type Props = {
   onSelect?: (item: FolderItem, event: MouseEvent<HTMLElement>) => void;
   onToggleCheck?: (item: FolderItem) => void;
   onPreview?: (file: FileItem) => void;
+  onOpenFolder?: (folderId: string) => void;
   onContextMenu?: (item: FolderItem, event: MouseEvent<HTMLElement>) => void;
   onRename: FileAction;
   onTrash: ItemAction;
@@ -50,6 +51,7 @@ export function DriveItems({
   onSelect,
   onToggleCheck,
   onPreview,
+  onOpenFolder,
   onContextMenu,
   onRename,
   onTrash,
@@ -66,12 +68,14 @@ export function DriveItems({
   const hasAnySelection = Boolean(selectedIds && selectedIds.size > 0);
   const vi = locale === 'vi';
 
-  const actionButtons = (item: FolderItem, name: string) => (
+  const actionButtons = (item: FolderItem, name: string, surface: 'list' | 'folder-grid' | 'file-grid') => (
     <div
       className={`ux-hover-reveal flex shrink-0 items-center justify-end gap-0.5 transition-opacity ${
-        grid
-          ? 'sm:opacity-70 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100'
-          : 'sm:opacity-70 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100'
+        surface === 'list'
+          ? 'sm:opacity-35 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100'
+          : surface === 'file-grid'
+            ? 'rounded-lg border border-line bg-surface-canvas/90 p-0.5 shadow-sm backdrop-blur-sm sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100'
+            : 'sm:pointer-events-none sm:absolute sm:right-2 sm:top-1/2 sm:z-10 sm:-translate-y-1/2 sm:rounded-lg sm:border sm:border-line sm:bg-surface-canvas/95 sm:p-0.5 sm:opacity-0 sm:shadow-sm sm:backdrop-blur-sm sm:group-hover:pointer-events-auto sm:group-hover:opacity-100 sm:group-focus-within:pointer-events-auto sm:group-focus-within:opacity-100'
       }`}
     >
       {item.kind === 'file' && onPreview && (
@@ -181,6 +185,11 @@ export function DriveItems({
                   data-kind={item.kind}
                   data-item-id={item.id}
                   onClick={(event) => onSelect?.(item, event)}
+                  onDoubleClick={(event) => {
+                    if ((event.target as HTMLElement).closest('button, a')) return;
+                    if (item.kind === 'folder') onOpenFolder?.(item.id);
+                    else onPreview?.(item);
+                  }}
                   onContextMenu={(event) => onContextMenu?.(item, event)}
                   className={`group flex flex-col gap-2 px-3 py-2.5 transition-colors sm:grid sm:grid-cols-[auto_minmax(0,1fr)_88px_132px_auto] sm:items-center sm:gap-3 ${
                     isSelected
@@ -246,7 +255,7 @@ export function DriveItems({
                   <time dateTime={item.updatedAt} className="hidden text-xs text-ink-muted sm:block">
                     {dateFormat.format(new Date(item.updatedAt))}
                   </time>
-                  <div className="flex justify-end">{actionButtons(item, name)}</div>
+                  <div className="flex justify-end">{actionButtons(item, name, 'list')}</div>
                 </li>
               );
             })}
@@ -278,64 +287,62 @@ export function DriveItems({
                 data-kind="folder"
                 data-item-id={item.id}
                 onClick={(event) => onSelect?.(item, event)}
+                onDoubleClick={(event) => {
+                  if ((event.target as HTMLElement).closest('button, a')) return;
+                  onOpenFolder?.(item.id);
+                }}
                 onContextMenu={(event) => onContextMenu?.(item, event)}
-                className={`panel group relative flex min-w-0 flex-col gap-2 px-3.5 py-2.5 transition-all ${
+                className={`panel group relative flex min-h-[64px] min-w-0 items-center gap-3 px-3.5 py-2.5 transition-all ${
                   isSelected
                     ? 'border-accent bg-surface-selected ring-1 ring-accent'
                     : 'hover:border-line-strong hover:bg-surface-hover'
                 }`}
               >
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
-                    <span
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg transition-opacity ${folderIconClasses} ${
-                        onToggleCheck && (isSelected || hasAnySelection)
-                          ? 'opacity-15'
-                          : onToggleCheck
-                            ? 'group-hover:opacity-15'
-                            : ''
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg transition-opacity ${folderIconClasses} ${
+                      onToggleCheck && (isSelected || hasAnySelection)
+                        ? 'opacity-15'
+                        : onToggleCheck
+                          ? 'group-hover:opacity-15'
+                          : ''
+                    }`}
+                  >
+                    <FolderIcon aria-hidden="true" className="h-5 w-5" />
+                  </span>
+                  {onToggleCheck && (
+                    <button
+                      type="button"
+                      aria-label={`${vi ? 'Chọn' : 'Select'} ${item.name}`}
+                      aria-pressed={isSelected}
+                      onClick={(event) => { event.stopPropagation(); onToggleCheck(item); }}
+                      className={`ux-hover-reveal absolute inset-0 m-auto inline-flex h-6 w-6 items-center justify-center rounded-md border transition-opacity ${
+                        isSelected
+                          ? 'border-accent bg-accent text-white opacity-100'
+                          : hasAnySelection
+                            ? 'border-line-strong bg-surface-canvas text-transparent opacity-100'
+                            : 'border-line-strong bg-surface-canvas text-transparent opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
                       }`}
                     >
-                      <FolderIcon aria-hidden="true" className="h-5 w-5" />
-                    </span>
-                    {onToggleCheck && (
-                      <button
-                        type="button"
-                        aria-label={`${vi ? 'Chọn' : 'Select'} ${item.name}`}
-                        aria-pressed={isSelected}
-                        onClick={(event) => { event.stopPropagation(); onToggleCheck(item); }}
-                        className={`ux-hover-reveal absolute inset-0 m-auto inline-flex h-6 w-6 items-center justify-center rounded-md border transition-opacity ${
-                          isSelected
-                            ? 'border-accent bg-accent text-white opacity-100'
-                            : hasAnySelection
-                              ? 'border-line-strong bg-surface-canvas text-transparent opacity-100'
-                              : 'border-line-strong bg-surface-canvas text-transparent opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
-                        }`}
-                      >
-                        <CheckIcon aria-hidden="true" className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <Link
-                      href={driveHref(item.id, '', 1, view)}
-                      prefetch={false}
-                      onClick={(event) => event.stopPropagation()}
-                      className="inline-block max-w-full truncate rounded-sm align-top text-sm font-semibold text-ink hover:text-accent-text hover:underline"
-                      title={item.name}
-                    >
-                      {item.name}
-                    </Link>
-                    <p className="mt-0.5 truncate whitespace-nowrap text-xs text-ink-muted">
-                      <time dateTime={item.updatedAt}>{dateFormat.format(new Date(item.updatedAt))}</time>
-                    </p>
-                  </div>
+                      <CheckIcon aria-hidden="true" className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
-                {canManage && (
-                  <div className="flex items-center justify-end border-t border-line pt-1.5">
-                    {actionButtons(item, item.name)}
-                  </div>
-                )}
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={driveHref(item.id, '', 1, view)}
+                    prefetch={false}
+                    onClick={(event) => event.stopPropagation()}
+                    className="inline-block max-w-full truncate rounded-sm align-top text-sm font-semibold text-ink hover:text-accent-text hover:underline"
+                    title={item.name}
+                  >
+                    {item.name}
+                  </Link>
+                  <p className="mt-0.5 truncate whitespace-nowrap text-xs text-ink-muted">
+                    <time dateTime={item.updatedAt}>{dateFormat.format(new Date(item.updatedAt))}</time>
+                  </p>
+                </div>
+                {canManage && actionButtons(item, item.name, 'folder-grid')}
               </li>
             );
           }
@@ -348,6 +355,10 @@ export function DriveItems({
               data-kind="file"
               data-item-id={item.id}
               onClick={(event) => onSelect?.(item, event)}
+              onDoubleClick={(event) => {
+                if ((event.target as HTMLElement).closest('button, a')) return;
+                onPreview?.(item);
+              }}
               onContextMenu={(event) => onContextMenu?.(item, event)}
               className={`panel group relative flex min-w-0 flex-col overflow-hidden transition-all ${
                 isSelected
@@ -356,13 +367,7 @@ export function DriveItems({
               }`}
             >
               <div
-                onClick={(event) => {
-                  if (onPreview) {
-                    event.stopPropagation();
-                    onPreview(item);
-                  }
-                }}
-                className={`relative flex h-28 items-center justify-center border-b border-line bg-surface-subtle bg-gradient-to-br ${icon.tint} ${onPreview ? 'cursor-pointer' : ''}`}
+                className={`relative flex h-32 items-center justify-center border-b border-line bg-surface-subtle bg-gradient-to-br ${icon.tint}`}
               >
                 {onToggleCheck && (
                   <button
@@ -381,6 +386,9 @@ export function DriveItems({
                     <CheckIcon aria-hidden="true" className="h-3.5 w-3.5" />
                   </button>
                 )}
+                <div className="absolute right-2 top-2 z-10">
+                  {actionButtons(item, item.originalName, 'file-grid')}
+                </div>
                 <span className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:scale-105 ${icon.classes}`}>
                   <icon.Icon aria-hidden="true" className="h-6 w-6" />
                 </span>
@@ -404,9 +412,6 @@ export function DriveItems({
                     {readableSize(item.size, locale)} · <time dateTime={item.updatedAt}>{dateFormat.format(new Date(item.updatedAt))}</time>
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center justify-end border-t border-line bg-surface-subtle/60 px-2 py-1">
-                {actionButtons(item, item.originalName)}
               </div>
             </li>
           );

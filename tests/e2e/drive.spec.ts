@@ -156,7 +156,10 @@ test('deep link, upload, Unicode rename, download bytes, and logout', async ({ p
   await recordScreenshot(page, testInfo, 'drive-after-rename')
 
   const loggedOut = apiResponse(page, 'POST', '/auth/logout')
+  await page.getByTestId('profile-menu-trigger').click()
   await page.getByTestId('logout').click()
+  await expect(page.getByTestId('logout-confirm-dialog')).toBeVisible()
+  await page.getByTestId('logout-confirm').click()
   expect((await loggedOut).status()).toBe(200)
   await expect(page).toHaveURL(url => url.pathname === '/login')
   const expired = await page.request.get(`${api}/auth/me`)
