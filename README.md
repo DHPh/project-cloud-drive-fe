@@ -1,32 +1,50 @@
-# Cloud Drive Frontend
+# Cloud Drive — Frontend
 
-Repo Next.js độc lập cho giao diện Cloud Drive. Mốc `DRIVE-01` giữ bố cục Drive từ bản Nuxt và hỗ trợ đăng nhập, mở thư mục, tìm kiếm, phân trang, upload, đổi tên, download và đăng xuất. Mốc `TRASH-01` bổ sung đưa từng tệp vào Thùng rác, xem danh sách và khôi phục. Mốc `SHARE-01` bổ sung cấp quyền theo tài khoản, hạn chia sẻ, thu hồi, link tệp và danh sách tệp được chia sẻ với mình. Repo backend `project-cloud-drive-be` cung cấp API, PostgreSQL và MinIO.
+Next.js App Router frontend for Cloud Drive, a file storage, sharing, and public-board web application deployed on Vercel and backed by [`project-cloud-drive-be`](https://github.com/DHPh/project-cloud-drive-be).
 
-`DRIVE-02` bổ sung tạo, đổi tên và di chuyển thư mục bằng bộ chọn đích có breadcrumb và phân trang.
+- **Live App:** [cloud.dhpham.dev](https://cloud.dhpham.dev)
+- **Public Boards (no sign-in required):** [cloud.dhpham.dev/explore](https://cloud.dhpham.dev/explore)
+- **Backend Repository:** [DHPh/project-cloud-drive-be](https://github.com/DHPh/project-cloud-drive-be)
 
-`SHARE-02` bổ sung chia sẻ thư mục chỉ xem, quyền kế thừa theo vị trí, di chuyển tệp và khôi phục riêng tư từ Thùng rác.
+## Key Features
 
-Bản OpenAPI `0.13.0` có tìm toàn Drive, Dòng thời gian, quản lý quyền đã chia sẻ, xem trước, ZIP, tài khoản, quản trị, quyền chỉnh sửa và Board công khai. Trình duyệt dùng quyền hiện hành do backend xác nhận.
+- **Drive Workspace:** Nested folder hierarchy, breadcrumb target picker for moving files and folders, global Drive search, Activity Timeline, paginated listings, keyboard shortcuts, dark/light theme, and bilingual EN/VI UI.
+- **File Workflows:** File uploads, inline previews (images, PDFs via `pdfjs-dist`, and bounded text/Markdown), single-file streaming downloads, multi-item ZIP downloads, renaming, and Trash with restore.
+- **Sharing & Public Boards:** Per-account viewer and editor grants with expiration, inherited folder permissions, share management, link and QR code sharing, and public read-only boards at `/explore`.
+- **Account & Admin:** Cookie-backed sessions, invite-based onboarding, and admin views gated by backend-verified permissions.
 
-- [Thiết kế UX](docs/ux.md)
-- [Bản OpenAPI của frontend](docs/contracts/openapi.yaml)
+## Architecture & Tech Stack
 
-## Chạy local
+- **Stack:** Next.js 16 (App Router), React 19, TypeScript 5.9, Tailwind CSS, Radix UI Dialog, Heroicons, `pdfjs-dist`, `qrcode`, Playwright + `@axe-core/playwright`.
+- **Same-Origin `/api/v1` Proxy:** Next.js rewrites forward browser `/api/v1/*` requests to `CLOUD_DRIVE_API_ORIGIN`, keeping `HttpOnly` session cookies first-party while SSR verifies active sessions against the backend.
+- **Contract-Driven API Types:** `src/lib/api-schema.d.ts` is generated from `docs/contracts/openapi.yaml` via `openapi-typescript` and validated in CI/local checks with `npm run check:api`.
 
-Dùng Node.js 24. Khởi động backend và, nếu chạy kiểm thử giao diện, chuẩn bị fixture bằng `npm run db:setup` trong repo backend. Chạy hai lệnh sau từ gốc repo frontend.
+```text
+Browser ──▶ Vercel (Next.js App Router + /api/v1 rewrite) ──▶ Cloudflare Tunnel ──▶ Linux VPS (Express + PostgreSQL 17 + MinIO)
+```
+
+## Documentation
+
+- [UX Design](docs/ux.md)
+- [OpenAPI Contract](docs/contracts/openapi.yaml)
+- [Contract Notes](docs/contracts/README.md)
+
+## Local Development
+
+Requires **Node.js 24** (`>=24 <25`) and the backend running locally (run `npm run db:setup` in `project-cloud-drive-be` first to prepare synthetic fixtures).
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Mở [frontend local](http://127.0.0.1:3000). Backend dùng `APP_ORIGIN=http://127.0.0.1:3000`. Next.js chuyển `/api/v1` đến `http://127.0.0.1:3001` theo mặc định. Khi đổi địa chỉ API, sao chép `.env.example` thành `.env.local` rồi đổi `CLOUD_DRIVE_API_ORIGIN`. Khi đổi địa chỉ web, cập nhật `APP_ORIGIN` ở backend cho khớp.
+Open `http://127.0.0.1:3000`. By default, Next.js proxies `/api/v1` to `http://127.0.0.1:3001`. Copy `.env.example` to `.env.local` to override `CLOUD_DRIVE_API_ORIGIN`, and keep the backend `APP_ORIGIN` setting aligned with the frontend origin.
 
-## Đồng bộ hợp đồng
+## OpenAPI Contract Sync
 
-Backend duy trì bản chuẩn `docs/contracts/openapi.yaml`. Sao chép bản chuẩn từ revision backend tương ứng vào `docs/contracts/openapi.yaml` của frontend. Chạy `npm run generate:api` để cập nhật `src/lib/api-schema.d.ts`. Đưa bản OpenAPI, kiểu sinh và thay đổi sử dụng API vào cùng thay đổi frontend. `npm run check:api` kiểm tra kiểu đã sinh khớp bản sao trong repo này.
+The backend repository maintains the canonical `docs/contracts/openapi.yaml`. Copy the matching OpenAPI spec into `docs/contracts/openapi.yaml` here, run `npm run generate:api` to regenerate `src/lib/api-schema.d.ts`, and verify sync with `npm run check:api`.
 
-## Kiểm chứng
+## Verification & E2E Testing
 
 ```sh
 npm run check:api
@@ -37,16 +55,15 @@ npx playwright install chromium webkit
 npm run test:e2e
 ```
 
-Chạy Playwright khi web và backend dùng fixture tổng hợp đã sẵn sàng. `PLAYWRIGHT_BASE_URL` mặc định là `http://127.0.0.1:3000`. Báo cáo HTML nằm trong `playwright-report/`.
+Playwright targets `PLAYWRIGHT_BASE_URL` (defaults to `http://127.0.0.1:3000`) and writes HTML reports to `playwright-report/`. Admin E2E scenarios require `PLAYWRIGHT_ADMIN_EMAIL` and `PLAYWRIGHT_ADMIN_PASSWORD` matching a bootstrapped admin on the test backend. For full acceptance runs across browser configurations, isolate test databases/buckets per run and invoke projects individually, e.g.:
 
-Các ca quản trị dùng admin tổng hợp đã tạo qua CLI bootstrap của backend. Cấp `PLAYWRIGHT_ADMIN_EMAIL` và `PLAYWRIGHT_ADMIN_PASSWORD` cho tiến trình Playwright. Khi nghiệm thu toàn bộ, dùng database, bucket và tiến trình backend thử nghiệm riêng cho mỗi cấu hình trình duyệt. Chạy từng cấu hình bằng `node node_modules/@playwright/test/cli.js test --project=chromium-desktop` rồi lặp với các project còn lại trong cấu hình Playwright.
+```sh
+node node_modules/@playwright/test/cli.js test --project=chromium-desktop
+```
 
-## Triển khai trên Vercel
+## Vercel Deployment
 
-Import repo frontend, để **Root Directory** là gốc repo, chọn preset **Next.js** và **Node.js 24.x**. Dùng `npm ci` nếu ghi đè lệnh cài đặt, và `npm run build` nếu ghi đè lệnh build. Bật biến hệ thống để Next có thể kiểm tra cấu hình Vercel. [Thiết lập build Vercel](https://vercel.com/docs/builds/configure-a-build) · [Biến hệ thống Vercel](https://vercel.com/docs/environment-variables/system-environment-variables)
-
-Trong môi trường Production, đặt `CLOUD_DRIVE_API_ORIGIN` thành origin HTTPS của backend, ví dụ `https://api.example.com`. Giá trị dùng cho rewrite `/api/v1` khi build và cho kiểm tra phiên SSR khi chạy. Trình duyệt vẫn gọi API trên origin của frontend. Backend đặt `APP_ORIGIN` đúng origin người dùng mở, ví dụ `https://drive.example.com`, để request ghi cùng origin được chấp nhận. [Next.js rewrites](https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites)
-
-Nếu kiểm thử Preview có thao tác ghi, dùng hostname Preview ổn định và backend thử nghiệm có `APP_ORIGIN` trùng chính xác hostname đó. Mỗi backend hiện chấp nhận một origin. Khi đổi `CLOUD_DRIVE_API_ORIGIN`, triển khai lại frontend để cập nhật rewrite. [Môi trường Vercel](https://vercel.com/docs/deployments/environments)
-
-Sau triển khai, xác nhận đăng nhập, tải lại `/drive` để kiểm tra SSR, upload tệp nhỏ và một tệp gần giới hạn backend, đổi tên có dấu, tải xuống và đăng xuất. Đối chiếu tên và nội dung tệp. Vercel áp dụng giới hạn thời gian riêng cho external rewrite nên cần chạy ca upload trên deployment trước khi chốt mức hỗ trợ. [Giới hạn Vercel](https://vercel.com/docs/limits)
+1. Import the repository with the **Next.js** preset, root directory at the repository root, **Node.js 24.x**, `npm ci` install command, and `npm run build`.
+2. Set `CLOUD_DRIVE_API_ORIGIN` to the backend HTTPS origin (redeploy after changing it so Next.js rewrites update).
+3. Configure `APP_ORIGIN` on the backend to include the deployed frontend origin (the backend supports one or more comma-separated allowed HTTPS origins).
+4. After deployment, verify sign-in, reloading `/drive` (SSR), small and near-limit uploads (accounting for Vercel external rewrite timeout limits), Unicode renaming, file download, and sign-out.
